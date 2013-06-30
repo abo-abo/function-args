@@ -35,7 +35,7 @@ If your includes aren't located in default dirs e.g. /usr/include/ etc, then you
 
 # Main functions
 
-## `fa-show`
+### `fa-show`
 
 Show an overlay hint with current function arguments like so:
 
@@ -45,7 +45,7 @@ The point position is tracked and the current hint argument is updated according
 After you've called it with `M-i`, you can cycle the overloaded functions with `M-n`/`M-h`.
 You can dismiss the hint with `M-u` or by editing anywhere outside the function arguments.
 
-## `moo-complete`
+### `moo-complete`
 
 It's essentially a c++-specific version 'semantic-ia-complete-symbol.
 It behaves better, because it accounts more for function overloading and inheritance.
