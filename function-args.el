@@ -323,23 +323,18 @@ Return non-nil if it was updated."
               (let* ((ctxt-type (moo-ctxt-type))
                      (ctype (semantic-tag-get-attribute ctxt-type :type)))
                 ;; check for A::b
-                (if (save-excursion (search-forward (car function))
-                                    (looking-at "::"))
-                    (if (and (stringp ctype) (string= ctype "namespace"))
-                        (mapcar #'sm->fal
-                                (let ((namespace-memebers
-                                       (cl-mapcan
-                                        `(lambda (tag)
-                                           (filter (lambda (tag) (eq (cadr tag) 'function))
-                                                   (moo-filter-members tag ,(cadr function))))
-                                        (moo-desperately-find-sname (car function)))))
-                                  (if (and (eq 1 (length namespace-memebers))
-                                           (eq (cadar namespace-memebers) 'type))
-                                      (moo-get-constructors
-                                       (moo-dereference-typedef (car namespace-memebers) ctxt-type))
-                                    namespace-memebers)))
-                      (fa-process ctxt-type
-                                  (cadr function)))
+                (if (or (and (stringp ctype) (string= ctype "namespace"))
+                        (save-excursion (search-forward (car function))
+                                        (looking-at "::")))
+                    (or
+                     (fa-process ctxt-type
+                                 (cadr function))
+                     (mapcar #'sm->fal
+                             (cl-mapcan
+                              `(lambda (tag)
+                                 (filter (lambda (tag) (eq (cadr tag) 'function))
+                                         (moo-filter-members tag ,(cadr function))))
+                              (moo-desperately-find-sname (car function)))))
                   (mapcar #'sm->fal
                           (filter `(lambda(f) (string= (car f) ,(cadr function)))
                                   (if (listp ctype) ; this is a check for A.B or A::B
@@ -489,7 +484,7 @@ WSPACE is the padding."
                    "?")))
          ;; arguments part
          (mapcar #'sm->var
-                 (mapcar (lambda (x) (if (string= (car x) "") (setcar x "nop")) x) arguments-p)))))))
+                 (mapcar (lambda (x) (if (string= (car x) "") (setcar x "")) x) arguments-p)))))))
 
 (defun sm->var (sm)
   (let ((name (pop sm))
