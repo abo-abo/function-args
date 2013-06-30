@@ -53,21 +53,21 @@ You can invoke it with `M-o` by default.
 
 # Bugs
 
-# Reporting
+### Reporting
 
 If you wish to report a bug, please try to reproduce it first
 with the newest Emacs like so:
 
     $ emacs -q -l ./function-args.el ~/test.cc
 
-# bzr CEDET
+### bzr CEDET
 
 The latest version of [CEDET][bzr] can sometimes give more completion candidates.
 I recommend to install it if you're having problems with the CEDET that comes with Emacs.
 
 [bzr]: http://cedet.sourceforge.net/bzr-repo.shtml
 
-# Semantic refresh
+### Semantic refresh
 
 If you're getting a completion only sometimes under the same conditions,
 try `M-x RET semantic-force-refresh`.
