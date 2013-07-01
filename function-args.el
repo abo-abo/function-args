@@ -326,7 +326,7 @@ Return non-nil if it was updated."
                 (if (or (and (stringp ctype) (string= ctype "namespace"))
                         (save-excursion (search-forward (car function))
                                         (looking-at "::")))
-                    (or
+                    (append
                      (fa-process ctxt-type
                                  (cadr function))
                      (mapcar #'sm->fal
