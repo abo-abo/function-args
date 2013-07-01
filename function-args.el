@@ -21,7 +21,7 @@
 ;;; Commentary:
 ;;
 ;; This extension provides two main commands that are useful for c++-mode:
-;; 
+;;
 ;; * `fa-show' -- show an overlay hint with current function arguments
 ;; * `moo-complete' -- this is essentially a c++-specific version
 ;;   of `semantic-ia-complete-symbol'.
@@ -39,7 +39,8 @@
    (define-key c++-mode-map (kbd "M-i") 'fa-show)
    (define-key c++-mode-map (kbd "M-n") (fa-idx-cycle 1))
    (define-key c++-mode-map (kbd "M-h") (fa-idx-cycle -1))
-   (define-key c++-mode-map (kbd "M-u") 'fa-abort)))
+   (define-key c++-mode-map (kbd "M-u") 'fa-abort)
+   (define-key c++-mode-map (kbd "M-k") 'fa-jump)))
 
 ;; ——— Customization —————————————————————————————————————————————————————————————————
 (defgroup function-args nil
@@ -95,7 +96,7 @@
 (defvar *fa-end-pos* nil
   "Position of ) after `fa-start-tracking' was invoked.")
 
-(defvar *fa-lst* nil 
+(defvar *fa-lst* nil
   "Current function arguments variants.")
 
 (defvar *fa-arg* nil
@@ -144,12 +145,38 @@
 (defun fa-abort (&optional msg)
   "Stop tracking the cursor and remove the overlay."
   (interactive)
-  (remove-hook 'after-change-functions
-               'fa-after-change)
-  (remove-hook 'before-change-functions
-               'fa-before-change)
+  (if (overlayp fa-overlay)
+      (progn
+        (delete-overlay fa-overlay)
+        (setq fa-overlay nil)
+        (remove-hook 'after-change-functions
+                     'fa-after-change)
+        (remove-hook 'before-change-functions
+                     'fa-before-change))
+    (fa-update-arg)
+    (fa-do-show)))
+
+(defun fa-jump ()
+  "Jump to current function of `fa-arg'"
+  (interactive)
   (when (overlayp fa-overlay)
-    (delete-overlay fa-overlay)))
+    (fa-abort)
+    (push-mark (point) t)
+    (let ((tag (nth 2 (car (nth *fa-idx* *fa-lst*)))))
+      (switch-to-buffer
+       (set-buffer
+        (find-file-noselect
+         (car tag))))
+      (goto-char
+       (cdr tag)))))
+
+(defun moo-get-tag-position (tag)
+  (let ((x (car (last tag))))
+    (cond ((overlayp x)
+           (overlay-start x))
+          ((arrayp x)
+           (aref x 0))
+          (t 0))))
 
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
@@ -181,10 +208,16 @@
                                     (semantic-tag-get-attribute var-tag :type) :template-specifier)))
                 ;; assume that the first template parameter is the relevant one
                 ;; (normally, there should be only one anyway)
-                (setq tmembers (moo-stype->tmembers (caar type-template)))))
+                (setq tmembers (moo-ttype->tmembers
+                                (moo-stype->tag (caar type-template))))))
              ;; otherwise just get its type
              (t
-              (setq tmembers (moo-tvar->tmembers var-tag))))
+              (setq tmembers
+                    (cond ((semantic-tag-of-class-p var-tag 'type)
+                           (moo-ttype->tmembers var-tag))
+                          ((semantic-tag-of-class-p var-tag 'variable)
+                           (moo-tvar->tmembers var-tag))
+                          (t (error "unexpected"))))))
             (let ((candidates
                    (delete-dups
                     (filter (lambda(x) (eq 0 (cl-search mem-name (car x))))
@@ -271,7 +304,7 @@ Return non-nil if it was updated."
                      (or (and (featurep 'auto-complete) ac-menu)
                          (> (- end beg) 1)))
           (fa-abort))
-      (cond      
+      (cond
        ((eq len 0)                      ; insertion
         (incf *fa-end-pos* (- end beg)))
        ((eq beg end)                    ; deletion
@@ -279,67 +312,103 @@ Return non-nil if it was updated."
       (when (fa-update-arg)
       (fa-do-show)))))
 
+(defun moo-tag-get-filename (tag)
+  (or (semantic--tag-get-property tag :filename)
+      (and (overlayp (car (last tag)))
+           (buffer-file-name
+            (overlay-buffer (car (last tag)))))))
+
+(defun moo-tag-put-filename (tag filename)
+  (semantic--tag-put-property tag :filename filename))
+
+(defun moo-tag-put-filename-to-types (types-list filename)
+  (mapcar
+   (lambda(type)
+     (semantic-tag-put-attribute
+      type :members
+      (mapcar (lambda(tag) (moo-tag-put-filename tag filename))
+              (semantic-tag-get-attribute type :members))))
+   types-list))
+
+(defun fa-do-process (ttype str)
+  (let ((filename (moo-tag-get-filename ttype)))
+    (mapcar (lambda (tag) (moo-attach-filename tag filename))
+    (cond
+     ;; constructor
+     ((string= str "")
+      (moo-get-constructors ttype))
+     ;; member function
+     (t
+      (filter `(lambda(f) (string= (car f) str))
+              (moo-get-member-functions ttype)))
+      ))))
+
 (defun fa-calculate (pos)
   "Return current function (or functions in case of overloading) in the form:
  ((name-1 arg-1 arg-2 ...) (name-2 arg-1 arg2 ...) ...)."
   (let* ((function (semantic-ctxt-current-symbol))
          (result
-          (cond
-           ;; semantic didn't recognize anything
-           ;; try a class temp initialization
-           ((= 0 (length function))
-            (save-excursion
-              (mp-backward-char-skip<>)
-              (mapcar #'sm->fal (moo-get-constructors
-                                 (moo-ctxt-type)))))
-           ;; semantic gave just a list with one string - a variable name
-           ((= 1 (length function))
-            (save-excursion
-              (search-backward (car function))
-              (let ((ctxt-type (moo-ctxt-type)))
-                (cond
-                 ;; variable init inside constructor
-                 ((and (semantic-tag-p ctxt-type)
-                       (semantic-tag-of-class-p ctxt-type 'variable)
-                       (looking-back ":[^;]*"))
-                  (mapcar #'sm->fal
-                          (moo-get-constructors
-                           (moo-sname->tag (car function)))))
-                 ;; global function invocation
-                 ((looking-back "\\(:?;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
-                  (list (sm->fal ctxt-type)))
-                 ;; try to match a variable with a constructor declaration:
-                 ;; move to the type
-                 (t
-                  (mp-backward-char-skip<>)
-                  (let* ((ctxt-type (moo-ctxt-type))
-                         (scope (moo-get-tag-scope ctxt-type)))
-                    (mapcar #'sm->fal 
-                            (moo-get-constructors
-                             (moo-dereference-typedef ctxt-type scope)))))))))
-           ((= 2 (length function))
-            (save-excursion
-              (search-backward (car function))
-              (let* ((ctxt-type (moo-ctxt-type))
-                     (ctype (semantic-tag-get-attribute ctxt-type :type)))
-                ;; check for A::b
-                (if (or (and (stringp ctype) (string= ctype "namespace"))
-                        (save-excursion (search-forward (car function))
-                                        (looking-at "::")))
-                    (append
+          (mapcar
+           #'sm->fal
+           (cond
+            ;; semantic didn't recognize anything
+            ;; try a class temp initialization
+            ((= 0 (length function))
+             (save-excursion
+               (mp-backward-char-skip<>)
+               (fa-do-process (moo-ctxt-type) "")))
+            ;; semantic gave just a list with one string - a variable name
+            ((= 1 (length function))
+             (save-excursion
+               (search-backward (car function))
+               (let ((ctxt-type (moo-ctxt-type)))
+                 (cond
+                  ;; variable init inside constructor
+                  ((and (semantic-tag-p ctxt-type)
+                        (semantic-tag-of-class-p ctxt-type 'variable)
+                        (looking-back ":[^;]*"))
+                   (fa-do-process (moo-sname->tag (car function)) ""))
+                  ;; global function invocation
+                  ((looking-back "\\(:?;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
+                   (list ctxt-type))
+                  ;; try to match a variable with a constructor declaration:
+                  ;; move to the type
+                  (t
+                   (mp-backward-char-skip<>)
+                   (let* ((ctxt-type (moo-ctxt-type))
+                          (scope (moo-tag-get-scope ctxt-type)))
+                     (fa-do-process (moo-dereference-typedef ctxt-type scope) "")))))))
+            ((= 2 (length function))
+             (save-excursion
+               (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
+               (let* ((ctxt-type (moo-ctxt-type))
+                      (ctype (semantic-tag-get-attribute ctxt-type :type)))
+                 (forward-char)
+                 (cond
+                  ((looking-at "::")
+                   (delete-dups
+                    (append             ; a lot of time both are the same
                      (fa-process ctxt-type
                                  (cadr function))
-                     (mapcar #'sm->fal
-                             (cl-mapcan
-                              `(lambda (tag)
-                                 (filter (lambda (tag) (eq (cadr tag) 'function))
-                                         (moo-filter-members tag ,(cadr function))))
-                              (moo-desperately-find-sname (car function)))))
-                  (mapcar #'sm->fal
-                          (filter `(lambda(f) (string= (car f) ,(cadr function)))
-                                  (if (listp ctype) ; this is a check for A.B or A::B
-                                      (moo-stype->tmembers (car ctype))
-                                    (moo-get-member-functions ctxt-type)))))))))))
+                     (cl-mapcan
+                      `(lambda (tag)
+                         (filter (lambda (tag) (eq (cadr tag) 'function))
+                                 (moo-filter-members tag ,(cadr function))))
+                      (moo-desperately-find-sname (car function))))))
+                  ;; smart pointer?
+                  ((and (looking-at "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
+                   (let ((type-template (semantic-tag-get-attribute
+                                         (semantic-tag-get-attribute ctxt-type :type)
+                                         :template-specifier)))
+                     (fa-do-process (moo-stype->tag (caar type-template))
+                                    (cadr function))))
+                  ;; rest
+                  (t
+                   ;; get variable's type
+                   (when (semantic-tag-of-class-p ctxt-type 'variable)
+                     (setq ctxt-type (moo-stype->tag (car ctype))))
+                   (fa-do-process ctxt-type (cadr function)))))))))))
+    ;; fall back to semantic
     (or result
         (let ((fntag (semantic-analyze-find-tag-sequence
                       function (semantic-calculate-scope pos))))
@@ -352,24 +421,23 @@ Return non-nil if it was updated."
   "Get all functions of TTYPE with name STR.
 This includes the constructors of types with name STR."
   (let ((members (moo-filter-members ttype str)))
-    (mapcar #'sm->fal
-            (apply #'append
-                   (mapcar
-                    (lambda (tag1)
-                      (cond ((semantic-tag-of-class-p tag1 'function)
-                             (list tag1))
-                            ((semantic-tag-of-class-p tag1 'type)
-                             (moo-get-constructors
-                              (moo-dereference-typedef tag1 ttype)))
-                            ((semantic-tag-of-class-p tag1 'variable)
-                             nil)       ; skip
-                            (t
-                             (error
-                              (concat "fa-process "
-                                      (prin1-to-string tag1)
-                                      (prin1-to-string ttype)
-                                      str)))))
-                    members)))))
+    (apply #'append
+           (mapcar
+            (lambda (tag1)
+              (cond ((semantic-tag-of-class-p tag1 'function)
+                     (list tag1))
+                    ((semantic-tag-of-class-p tag1 'type)
+                     (moo-get-constructors
+                      (moo-dereference-typedef tag1 ttype)))
+                    ((semantic-tag-of-class-p tag1 'variable)
+                     nil)       ; skip
+                    (t
+                     (error
+                      (concat "fa-process "
+                              (prin1-to-string tag1)
+                              (prin1-to-string ttype)
+                              str)))))
+            members))))
 
 (defconst fa-paren-open  (propertize "(" 'face 'fa-face-semi))
 (defconst fa-paren-close (propertize ") : " 'face 'fa-face-semi))
@@ -388,7 +456,7 @@ WSPACE is the padding."
          (padding-length (- wspace (+ 1 (length n-string))))
          (str-width (apply #'+ (mapcar (lambda (x) (+ (length (car x))
                                                  (length (cdr x))))
-                                       lst)))
+                                       (cdr lst))))
          glue
          args)
     (setq glue (if (> str-width fa-max-one-line-width)
@@ -412,7 +480,7 @@ WSPACE is the padding."
      ;; template
      (and (caar lst) (propertize (caar lst) 'face 'fa-face-hint))
      ;; name
-     (and (cdar lst) (propertize (cdar lst) 'face 'fa-face-type)))))
+     (and (cadar lst) (propertize (cadar lst) 'face 'fa-face-type)))))
 
 (defun fancy-argument (cell &optional bold)
   (concat
@@ -423,7 +491,9 @@ WSPACE is the padding."
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
 (defun sm->fal (sm)
-  (let ((name (pop sm))
+  (let ((filename (semantic--tag-get-property sm :filename))
+        (position (moo-get-tag-position sm))
+        (name (pop sm))
         (name-e (pop sm)))
     (if (not (eq name-e 'function))
         (error "not a function")
@@ -442,6 +512,7 @@ WSPACE is the padding."
             destructor-flag-p
             pure-virtual-flag-p
             template-specifier-p
+            filename-p
             item)
         (while r
           (setq item (pop r))
@@ -472,16 +543,20 @@ WSPACE is the padding."
              (setq pure-virtual-flag-p (pop r)))
             (:template-specifier
              (setq template-specifier-p (pop r)))
+            (:filename
+             (setq filename-p (pop r)))
             (t (error (concat "sm->fal unknown token" (prin1-to-string item))))))
         (cons
          ;; name and type part
-         (cons (and template-p
+         (list (and template-p
                     (concat "template " (sm->template-specifier template-p) " "))
                (if constructor-flag-p
                    name
                  (if type-p
                      (sm->type type-p)
-                   "?")))
+                   "?"))
+               (cons filename
+                     position))
          ;; arguments part
          (mapcar #'sm->var
                  (mapcar (lambda (x) (if (string= (car x) "") (setcar x "")) x) arguments-p)))))))
@@ -567,31 +642,37 @@ WSPACE is the padding."
             (t
              ctxt)))))
 
-(defun moo-get-member-functions (type)
-  (and (semantic-tag-of-class-p type 'type)
-       (let ((members (semantic-tag-get-attribute type :members)))
-         (filter (lambda(tag) (semantic-tag-of-class-p tag 'function))
-                 members))))
-
 (defun moo-get-constructors (type)
   (let ((enump (moo-tenum->tmembers type)))
     (cond
      ;; enum
      (enump
-      `((,(semantic-tag-name type)
-        function
-        (:arguments
-         ((,(mapconcat
-             #'car
-             enump
-             " | ")
-           variable (:type ,(semantic-tag-name type))))
-         :type
-         "enum"))))
+      `((
+         ;; name
+         ,(semantic-tag-name type)
+         ;; class
+         function
+         ;; attributes
+         (:arguments
+          ((,(mapconcat
+              #'car
+              enump
+              " | ")
+            variable (:type ,(semantic-tag-name type))))
+          :type
+          "enum")
+         ;; properties
+         ,(semantic-tag-properties type)
+         ;; overlay
+         ,(semantic-tag-overlay type)
+         )))
      ;; else
-     (t 
-      (filter (lambda(tag) (semantic-tag-get-attribute tag :constructor-flag))
+     (t
+      (filter #'is-tag-constructor?
               (moo-get-member-functions type))))))
+
+(defun is-tag-constructor? (tag)
+  (semantic-tag-get-attribute tag :constructor-flag))
 
 (defun moo-stype->tag (str)
   (unwind-protect
@@ -603,7 +684,8 @@ WSPACE is the padding."
                              (semantic-analyze-find-tag-sequence
                               str scope 'prefixtypes 'unfindable)))
             ('error nil))
-          retval))))
+          ;; TODO: check (= (length retval) 1)
+          (car retval)))))
 
 (defun moo-tenum->tmembers (tag)
   (let ((stag (and (semantic-tag-of-class-p tag 'type)
@@ -612,44 +694,36 @@ WSPACE is the padding."
          (string= stag "enum")
          (semantic-tag-get-attribute tag :members))))
 
-(defun moo-ttype->tmembers (tag-type)
+(defun moo-get-member-functions (ttype)
+  (and (semantic-tag-of-class-p ttype 'type)
+       (filter (lambda(tag) (semantic-tag-of-class-p tag 'function))
+               (moo-ttype->tmembers ttype))))
+
+(defun moo-ttype->tmembers (ttype)
   (apply #'append
          (cons
           ;; own
-          (let ((own-members (semantic-tag-get-attribute
-                              tag-type
-                              :members)))
+          (let ((own-members
+                 (cl-delete-if (lambda (tag) (and (stringp (car tag)) (string= (car tag) "public")))
+                  (semantic-tag-get-attribute ttype :members))))
             (apply #'append
                    own-members
                    ;; members of enums join the containing type members
                    (mapcar #'moo-tenum->tmembers own-members)))
           ;; inherited
-          (mapcar #'moo-ttype->tmembers 
-                  (moo-ttype->tsuperclasses tag-type)))))
+          (mapcar (lambda (tag)
+                    ;; don't inherit constructors
+                    (cl-delete-if #'is-tag-constructor?
+                               (moo-ttype->tmembers (moo-stype->tag (car tag)))))
+                  (moo-ttype->tsuperclasses ttype)))))
 
-(defun moo-ttype->tsuperclasses (tag-type)
-  (semantic-tag-get-attribute tag-type :superclasses))
-
-(defun moo-stype->tmembers (str-type)
-  (apply #'append
-         (cons
-          ;; own
-          (semantic-tag-get-attribute
-           (car (moo-stype->tag str-type))
-           :members)
-          ;; inherited
-          (mapcar #'identity
-                  (mapcar #'moo-stype->tmembers 
-                          (moo-stype->ssuperclasses str-type))))))
-
-(defun moo-stype->ssuperclasses (str-type)
-  (mapcar #'car
-          (semantic-tag-get-attribute (car (moo-stype->tag str-type)) :superclasses)))
+(defun moo-ttype->tsuperclasses (ttype)
+  (semantic-tag-get-attribute ttype :superclasses))
 
 (defun moo-handle-completion (prefix candidates &optional formatter)
   (cond ((null candidates)
          (message "there is no completions, only Zuul"))
-        
+
         ((or (= 1 (length candidates))
              (cl-reduce (lambda (x1 x2) (and x1 (string= (car x1) (car x2)) x1)) candidates))
          ;; TODO: add bounds to this
@@ -697,30 +771,32 @@ WSPACE is the padding."
 
 (defun moo-tvar->tmembers (var-tag)
   (let* ((var-name (car var-tag))
-         (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
          (var-stype (car (semantic-tag-get-attribute var-tag :type)))
-         (type-tag (car (moo-stype->tag var-stype)))
+         (type-tag (moo-stype->tag var-stype))
          (type-typedef-p (semantic-tag-get-attribute type-tag :typedef)))
-    (if type-typedef-p
-        (moo-ttype->tmembers (moo-sname->tag var-name))
-      (moo-stype->tmembers var-stype))))
+    (moo-ttype->tmembers
+     (if type-typedef-p
+         (moo-sname->tag var-name)
+       type-tag))))
 
 (defun filter (pred lst)
   (delq nil
         (mapcar (lambda (x) (and (funcall pred x) x)) lst)))
 
-(defun moo-get-tag-scope (tag)
+(defun moo-tag-get-scope (tag)
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
 (defun moo-desperately-find-sname (stag)
-  (let ((file-tags (semantic-fetch-tags)))
-    (apply #'append
-        (delete-dups
+  (apply #'append
          (mapcar (lambda (tag)
-                   (filter (lambda (tag1) (string= (car tag1) stag))
-                           (semantic-file-tag-table (semantic-dependency-tag-file tag))))
+                   (let ((filename (semantic-dependency-tag-file tag)))
+                     (moo-tag-put-filename-to-types
+                      (filter (lambda(tag1) (string= (car tag1) stag))
+                              (semantic-file-tag-table filename))
+                      filename)))
                  (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
-                         file-tags))))))
+                         (semantic-fetch-tags)))))
+
 
 (defun moo-filter-members (tag sname)
   (let ((members (semantic-tag-get-attribute tag :members)))

@@ -45,6 +45,11 @@ The point position is tracked and the current hint argument is updated according
 After you've called it with `M-i`, you can cycle the overloaded functions with `M-n`/`M-h`.
 You can dismiss the hint with `M-u` or by editing anywhere outside the function arguments.
 
+### `fa-jump`
+
+While the overlay hint is active, jump to the current function.
+The default shortcut is `M-k`.
+
 ### `moo-complete`
 
 It's essentially a c++-specific version 'semantic-ia-complete-symbol.
