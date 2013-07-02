@@ -332,7 +332,7 @@ Return non-nil if it was updated."
 
 (defun fa-do-process (ttype str)
   (let ((filename (moo-tag-get-filename ttype)))
-    (mapcar (lambda (tag) (moo-attach-filename tag filename))
+    (mapcar (lambda (tag) (moo-tag-put-filename tag filename))
     (cond
      ;; constructor
      ((string= str "")
