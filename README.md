@@ -48,7 +48,9 @@ You can dismiss the hint with `M-u` or by editing anywhere outside the function 
 ### `fa-jump`
 
 While the overlay hint is active, jump to the current function.
-The default shortcut is `M-k`.
+The default shortcut is `M-j`.
+If the overlay isn't active,
+call whatever was bound to `M-j` before (usually it's `c-indent-new-comment-line`).
 
 ### `moo-complete`
 
