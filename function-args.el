@@ -211,9 +211,11 @@
                              (var-used-as-classvar-p
                               (or 
                                ;; semantic may think it's a function
-                               (moo-stype->tag
-                                (car
-                                 (semantic-tag-get-attribute var-tag :type)))
+                               (let ((type-name (semantic-tag-get-attribute var-tag :type)))
+                                 (if (equal type-name "class")
+                                     ;; this happens sometimes
+                                     var-tag
+                                   (moo-stype->tag (car type-name))))
                                ;; this works sometimes
                                (moo-sname->tag var-name)
                                ))
