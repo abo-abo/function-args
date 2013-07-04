@@ -32,18 +32,18 @@
 (semantic-mode 1)
 
 ;; ——— Setup —————————————————————————————————————————————————————————————————————————
-(add-hook
- 'c++-mode-hook
- (lambda()
-   (define-key c++-mode-map (kbd "M-o") 'moo-complete)
-   (define-key c++-mode-map (kbd "M-i") 'fa-show)
-   (define-key c++-mode-map (kbd "M-n") (fa-idx-cycle 1))
-   (define-key c++-mode-map (kbd "M-h") (fa-idx-cycle -1))
-   (define-key c++-mode-map (kbd "M-u") 'fa-abort)
-   (define-key c++-mode-map (kbd "M-j") `(lambda()(interactive)(if fa-overlay
-                                                              (fa-jump)
-                                                            (,(key-binding (kbd "M-j"))))))))
-
+(defun fa-config-default ()
+  (add-hook
+   'c++-mode-hook
+   (lambda()
+     (define-key c++-mode-map (kbd "M-o") 'moo-complete)
+     (define-key c++-mode-map (kbd "M-i") 'fa-show)
+     (define-key c++-mode-map (kbd "M-n") (fa-idx-cycle 1))
+     (define-key c++-mode-map (kbd "M-h") (fa-idx-cycle -1))
+     (define-key c++-mode-map (kbd "M-u") 'fa-abort)
+     (define-key c++-mode-map (kbd "M-j") `(lambda()(interactive)(if fa-overlay
+                                                                (fa-jump)
+                                                              (,(key-binding (kbd "M-j")))))))))
 ;; ——— Customization —————————————————————————————————————————————————————————————————
 (defgroup function-args nil
   "C++ function completion."
@@ -115,6 +115,9 @@
 
 (defvar *fa-idx* nil
   "Current function arguments variant.")
+
+(defvar fa-superclasses (make-hash-table :test 'equal)
+  "Stores superclasses tags.")
 
 ;; ——— Interactive functions —————————————————————————————————————————————————————————
 (defun fa-show (point)
@@ -704,10 +707,15 @@ WSPACE is the padding."
                    ;; members of enums join the containing type members
                    (mapcar #'moo-tenum->tmembers own-members)))
           ;; inherited
-          (mapcar (lambda (tag)
+          (mapcar (lambda (parent-tag)
+                    ;; parent-tag's only useful name is the name
+                    (let ((parent-name (car parent-tag)))
+                      (setq parent-tag
+                            (or (gethash parent-name fa-superclasses)
+                                (puthash parent-name (moo-stype->tag parent-name) fa-superclasses))))
                     ;; don't inherit constructors
                     (cl-delete-if #'moo-tag-is-constructor?
-                               (moo-ttype->tmembers (moo-stype->tag (car tag)))))
+                               (moo-ttype->tmembers parent-tag)))
                   (moo-ttype->tsuperclasses ttype)))))
 
 (defun moo-ttype->tsuperclasses (ttype)

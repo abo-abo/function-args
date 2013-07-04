@@ -16,6 +16,7 @@ Add to `.emacs`:
 
     (add-to-list 'load-path "~/.emacs.d/function-args")
     (require 'function-args)
+    (fa-config-default)
 
 Also, make sure that you have CEDET installed (it's part of Emacs since 23.2, so you probably do).
 
