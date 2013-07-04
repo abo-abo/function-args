@@ -209,10 +209,14 @@
                  (tmembers (moo-ttype->tmembers
                             (cond
                              (var-used-as-classvar-p
-                              ;; semantic may think it's a function
-                              (moo-stype->tag
-                               (car
-                                (semantic-tag-get-attribute var-tag :type))))
+                              (or 
+                               ;; semantic may think it's a function
+                               (moo-stype->tag
+                                (car
+                                 (semantic-tag-get-attribute var-tag :type)))
+                               ;; this works sometimes
+                               (moo-sname->tag var-name)
+                               ))
                              ;; Type::member
                              ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
                               (if (semantic-tag-of-class-p var-tag 'function)
