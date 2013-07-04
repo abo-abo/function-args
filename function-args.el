@@ -3,7 +3,10 @@
 ;; Copyright (C) 2013  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
+;; URL: https://github.com/abo-abo/function-args
 ;; Version: 0.1
+
+;; This file is not part of GNU Emacs
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,11 +23,11 @@
 
 ;;; Commentary:
 ;;
-;; This extension provides two main commands that are useful for c++-mode:
+;; This extension provides three main commands that are useful for c++-mode:
 ;;
-;; * `fa-show' -- show an overlay hint with current function arguments
-;; * `moo-complete' -- this is essentially a c++-specific version
-;;   of `semantic-ia-complete-symbol'.
+;; * `fa-show' -- show an overlay hint with current function arguments.
+;; * `fa-jump' -- jump to definition of current element of `fa-show'.
+;; * `moo-complete' -- a c++-specific version of `semantic-ia-complete-symbol'.
 
 
 (require 'semantic/ia)
@@ -41,9 +44,11 @@
      (define-key c++-mode-map (kbd "M-n") (fa-idx-cycle 1))
      (define-key c++-mode-map (kbd "M-h") (fa-idx-cycle -1))
      (define-key c++-mode-map (kbd "M-u") 'fa-abort)
-     (define-key c++-mode-map (kbd "M-j") `(lambda()(interactive)(if fa-overlay
-                                                                (fa-jump)
-                                                              (,(key-binding (kbd "M-j")))))))))
+     (define-key c++-mode-map (kbd "M-j") `(lambda()(interactive)
+                                             (if fa-overlay
+                                                 (fa-jump)
+                                               (,(key-binding (kbd "M-j")))))))))
+
 ;; ——— Customization —————————————————————————————————————————————————————————————————
 (defgroup function-args nil
   "C++ function completion."
@@ -194,7 +199,8 @@
         ;; either var.mem or var->mem
         (let ((var-name (car symbol))
               (mem-name (cadr symbol))
-              (var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")))
+              (var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
+              (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")))
           (let* ((var-tag (save-excursion
                             (search-backward var-name)
                             (semantic-analyze-interesting-tag
@@ -202,6 +208,11 @@
                  (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
                  (tmembers (moo-ttype->tmembers
                             (cond
+                             (var-used-as-classvar-p
+                              ;; semantic may think it's a function
+                              (moo-stype->tag
+                               (car
+                                (semantic-tag-get-attribute var-tag :type))))
                              ;; Type::member
                              ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
                               (if (semantic-tag-of-class-p var-tag 'function)
@@ -437,7 +448,7 @@ Reduce them to functions only"
 This includes the constructors of types with name STR."
   (let ((filename (moo-tag-get-filename ttype)))
     (mapcar (lambda (tag) (moo-tag-put-filename tag filename))
-            (moo-filter-members 
+            (moo-filter-members
              str
              (moo-ttype->tmembers ttype)))))
 
@@ -807,6 +818,7 @@ WSPACE is the padding."
   "Moves point backward until [A-Za-z_0-9] is encountered.
 Skips anything between matching <...>"
   (backward-char)
+  ;; TODO: look into `c-backward-<>-arglist'
   (while (not (looking-at "[A-Za-z_0-9]"))
             (if (eq (char-after) ?>)
                 (let ((n 1)
@@ -817,5 +829,5 @@ Skips anything between matching <...>"
                       (?> (cl-incf n))
                       (?< (cl-decf n)))))
               (backward-char))))
-
 (provide 'function-args)
+;;; function-args.el ends here
