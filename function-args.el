@@ -113,13 +113,13 @@
 (defvar fa-end-pos nil
   "Position of ) after `fa-start-tracking' was invoked.")
 
-(defvar *fa-lst* nil
+(defvar fa-lst nil
   "Current function arguments variants.")
 
-(defvar *fa-arg* nil
+(defvar fa-arg nil
   "Current function argument.")
 
-(defvar *fa-idx* nil
+(defvar fa-idx nil
   "Current function arguments variant.")
 
 (defvar fa-superclasses (make-hash-table :test 'equal)
@@ -142,23 +142,23 @@
     (error "not inside function")))
   (while (looking-back " ")
     (backward-char))
-  (setq *fa-lst* (fa-calculate (point)))
-  (if (eq (length *fa-lst*) 0)
+  (setq fa-lst (fa-calculate (point)))
+  (if (eq (length fa-lst) 0)
       (message "nothing found")
     (forward-char)
-    (setq *fa-idx* 0)
+    (setq fa-idx 0)
     (fa-update-arg)
     (setq fa-hint-pos (point))
     (fa-do-show)
     (fa-start-tracking point)))
 
 (defmacro fa-idx-cycle (arg)
-  "Cycle `*fa-idx*' by ARG and update the hint."
+  "Cycle `fa-idx' by ARG and update the hint."
   `(lambda ()
      (interactive)
-     (setq *fa-idx*
-        (mod (+ *fa-idx* ,arg)
-             (length *fa-lst*)))
+     (setq fa-idx
+        (mod (+ fa-idx ,arg)
+             (length fa-lst)))
      (fa-update-arg)
      (fa-do-show)))
 
@@ -182,7 +182,7 @@
   (when (overlayp fa-overlay)
     (fa-abort)
     (push-mark (point) t)
-    (let ((tag (nth 2 (car (nth *fa-idx* *fa-lst*)))))
+    (let ((tag (nth 2 (car (nth fa-idx fa-lst)))))
       (switch-to-buffer
        (find-file-noselect
         (car tag)))
@@ -210,7 +210,7 @@
                  (tmembers (moo-ttype->tmembers
                             (cond
                              (var-used-as-classvar-p
-                              (or 
+                              (or
                                ;; semantic may think it's a function
                                (let ((type-name (semantic-tag-get-attribute var-tag :type)))
                                  (if (equal type-name "class")
@@ -293,17 +293,17 @@
               'fa-after-change)))
 
 (defun fa-update-arg ()
-  "Update `*fa-arg*' if it needs to be updated.
+  "Update `fa-arg' if it needs to be updated.
 Return non-nil if it was updated."
   (let ((argn (semantic-ctxt-current-argument)))
     (cond ((numberp argn)
            (when (and (>= argn 1)
-                      (< argn (length (nth *fa-idx* *fa-lst*))))
-             (if (eq *fa-arg* (1- argn))
+                      (< argn (length (nth fa-idx fa-lst))))
+             (if (eq fa-arg (1- argn))
                  nil
-               (setq *fa-arg* (1- argn)))))
+               (setq fa-arg (1- argn)))))
           ((null argn)
-           (setq *fa-arg* 0)
+           (setq fa-arg 0)
            nil)
           (t
            (fa-abort
@@ -345,7 +345,7 @@ Return non-nil if it was updated."
            (aref x 0))
           (t 0))))
 
-(defun moo-tags-same-pos? (tag1 tag2)
+(defun moo-tags-same-pos-p (tag1 tag2)
   (and (equal (moo-tag-get-position tag1)
               (moo-tag-get-position tag2))
        (let ((fname1 (moo-tag-get-filename tag1))
@@ -387,7 +387,7 @@ Return non-nil if it was updated."
                         (looking-back ":[^;]*"))
                    (moo-get-constructors (moo-sname->tag (car function))))
                   ;; global function invocation
-                  ((looking-back "\\(:?;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
+                  ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
                            (moo-desperately-find-sname (car function))))
                   ;; try to match a variable with a constructor declaration:
@@ -416,7 +416,7 @@ Return non-nil if it was updated."
                          (filter (lambda (tag) (eq (cadr tag) 'function))
                                  (moo-filter-tag-by-name ,(cadr function) (moo-ttype->tmembers tag))))
                       (moo-desperately-find-sname (car function))))
-                    :test #'moo-tags-same-pos?))
+                    :test #'moo-tags-same-pos-p))
                   ;; smart pointer?
                   ((and (looking-back "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
                    (let* ((type (semantic-tag-get-attribute ctxt-type :type))
@@ -474,14 +474,14 @@ This includes the constructors of types with name STR."
             members))
 
 (defun fa-fancy-string (wspace)
-  "Return the string that corresponds to (nth *fa-idx* *fa-lst*).
+  "Return the string that corresponds to (nth fa-idx fa-lst).
 WSPACE is the padding."
   (if (< wspace 0)
       (setq wspace 0))
-  (let* ((lst (nth *fa-idx* *fa-lst*))
+  (let* ((lst (nth fa-idx fa-lst))
          (n-string
-          (if (> (length *fa-lst*) 1)
-              (format "[%d of %d] " (+ *fa-idx* 1) (length *fa-lst*))
+          (if (> (length fa-lst) 1)
+              (format "[%d of %d] " (+ fa-idx 1) (length fa-lst))
             ""))
          (padding-length (- wspace (+ 1 (length n-string))))
          (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
@@ -497,10 +497,10 @@ WSPACE is the padding."
                  fa-comma))
          (args (mapcar #'fa-fancy-argument
                          (cdr lst)))
-         (args-current-cdr (nthcdr *fa-arg* args)))
+         (args-current-cdr (nthcdr fa-arg args)))
     (when args-current-cdr
       (setcar args-current-cdr
-              (fa-fancy-argument (nth *fa-arg* (cdr lst)) t)))
+              (fa-fancy-argument (nth fa-arg (cdr lst)) t)))
     (concat
      (when (> padding-length 0) (make-string padding-length ? ))
      (propertize n-string 'face 'fa-face-hint-bold)
@@ -696,10 +696,10 @@ WSPACE is the padding."
          ,(semantic-tag-overlay type))))
      ;; else
      (t
-      (filter #'moo-tag-is-constructor?
+      (filter #'moo-tag-constructor-p
               (moo-get-member-functions type))))))
 
-(defun moo-tag-is-constructor? (tag)
+(defun moo-tag-constructor-p (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
 
 (defun moo-stype->tag (str)
@@ -746,7 +746,7 @@ WSPACE is the padding."
                             (or (gethash parent-name fa-superclasses)
                                 (puthash parent-name (moo-stype->tag parent-name) fa-superclasses))))
                     ;; don't inherit constructors
-                    (cl-delete-if #'moo-tag-is-constructor?
+                    (cl-delete-if #'moo-tag-constructor-p
                                (moo-ttype->tmembers parent-tag)))
                   (moo-ttype->tsuperclasses ttype)))))
 
