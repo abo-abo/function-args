@@ -398,11 +398,14 @@ Return non-nil if it was updated."
                      (moo-get-constructors (moo-dereference-typedef ctxt-type scope)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
+               (when (looking-at ">")
+                 (forward-char)
+                 (mp-backward-char-skip<>))
                (let* ((ctxt-type (moo-ctxt-type))
                       (ctype (semantic-tag-get-attribute ctxt-type :type)))
-                 (forward-char)
+                 (mp-backward-char-skip<> -1)
                  (cond
-                  ((looking-at "::")
+                  ((looking-back "::")
                    (cl-delete-duplicates
                     (append             ; a lot of time both are the same
                      (fa-process (cadr function)
@@ -410,11 +413,11 @@ Return non-nil if it was updated."
                      (cl-mapcan
                       `(lambda (tag)
                          (filter (lambda (tag) (eq (cadr tag) 'function))
-                                 (moo-filter-members ,(cadr function) (moo-ttype->tmembers tag))))
+                                 (moo-filter-tag-by-name ,(cadr function) (moo-ttype->tmembers tag))))
                       (moo-desperately-find-sname (car function))))
                     :test #'moo-tags-same-pos?))
                   ;; smart pointer?
-                  ((and (looking-at "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
+                  ((and (looking-back "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
                    (let* ((type (semantic-tag-get-attribute ctxt-type :type))
                           (type-template
                            (semantic-tag-get-attribute (if (equal type "class") ctxt-type type)
@@ -452,14 +455,21 @@ Reduce them to functions only"
 (defun fa-process (str ttype)
   "Get all functions of TTYPE with name STR.
 This includes the constructors of types with name STR."
-  (let ((filename (moo-tag-get-filename ttype)))
+  (let (
+        ;; TODO: this fails for namespaces such as std::
+        (filename (moo-tag-get-filename ttype)))
     (mapcar (lambda (tag) (moo-tag-put-filename tag filename))
-            (moo-filter-members
-             str
-             (moo-ttype->tmembers ttype)))))
+            (moo-filter-tag-by-class 'function
+                                     (moo-filter-tag-by-name
+                                      str
+                                      (moo-ttype->tmembers ttype))))))
 
-(defun moo-filter-members (sname members)
+(defun moo-filter-tag-by-name (sname members)
   (filter (lambda (tag) (string= (car tag) sname))
+            members))
+
+(defun moo-filter-tag-by-class (class members)
+  (filter (lambda (tag) (semantic-tag-of-class-p tag class))
             members))
 
 (defun fa-fancy-string (wspace)
@@ -818,22 +828,27 @@ WSPACE is the padding."
                                filename)))
                           (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
                                   file-tags)))
-           (list (moo-filter-members stag file-tags)))))
+           (list (moo-filter-tag-by-name stag file-tags)))))
 
-(defun mp-backward-char-skip<> ()
+(defmacro mp-backward-char-skip<> (&optional arg)
   "Moves point backward until [A-Za-z_0-9] is encountered.
 Skips anything between matching <...>"
-  (backward-char)
-  ;; TODO: look into `c-backward-<>-arglist'
-  (while (not (looking-at "[A-Za-z_0-9]"))
-            (if (eq (char-after) ?>)
-                (let ((n 1)
-                      (bound (- (point) 400)))
-                  (while (and (> n 0) (> (point) bound))
-                    (backward-char)
-                    (case (char-after)
-                      (?> (cl-incf n))
-                      (?< (cl-decf n)))))
-              (backward-char))))
+  (let ((dir (if arg -1 1))
+        (char-inc (if arg ?< ?>))
+        (char-dec (if arg ?> ?<)))
+    `(progn
+       (backward-char ,dir)
+       ;; TODO: look into `c-backward-<>-arglist'
+       (while (not (looking-at "[A-Za-z_0-9]"))
+         (if (eq (char-after) ,char-inc)
+             (let ((n 1)
+                   (bound (- (point) 400)))
+               (while (and (> n 0) (> (point) bound))
+                 (backward-char ,dir)
+                 (case (char-after)
+                   (,char-inc (cl-incf n))
+                   (,char-dec (cl-decf n)))))
+           (backward-char ,dir))))))
+
 (provide 'function-args)
 ;;; function-args.el ends here
