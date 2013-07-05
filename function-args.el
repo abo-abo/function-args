@@ -30,6 +30,7 @@
 ;; * `moo-complete' -- a c++-specific version of `semantic-ia-complete-symbol'.
 
 
+(require 'cl-lib)
 (require 'semantic/ia)
 (require 'semantic/db-find)
 (semantic-mode 1)
@@ -483,10 +484,14 @@ WSPACE is the padding."
               (format "[%d of %d] " (+ *fa-idx* 1) (length *fa-lst*))
             ""))
          (padding-length (- wspace (+ 1 (length n-string))))
-         (str-width (apply #'+ (mapcar (lambda (x) (+ (length (car x))
-                                                 (length (cdr x))))
-                                       (cdr lst))))
-         (glue (if (> str-width fa-max-one-line-width)
+         (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
+                                                    (length (cdr x))))
+                                          (cdr lst)))
+                       (length (caar lst))
+                       (length (cadar lst))
+                       7))
+         (glue (if (> (+ wspace str-width)
+                      (min fa-max-one-line-width (frame-width)))
                    ;; each arg on its own line
                    (concat fa-comma "\n" (make-string wspace ? ))
                  fa-comma))
