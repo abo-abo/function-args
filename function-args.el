@@ -394,6 +394,9 @@ Return non-nil if it was updated."
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
                            (moo-desperately-find-sname (car function))))
+                  ;; constructor as part of expression
+                  ((semantic-tag-of-class-p ctxt-type 'type)
+                   (moo-get-constructors ctxt-type))
                   ;; try to match a variable with a constructor declaration:
                   ;; move to the type
                   (t
