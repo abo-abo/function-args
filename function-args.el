@@ -218,8 +218,7 @@
                                      var-tag
                                    (moo-stype->tag (car type-name))))
                                ;; this works sometimes
-                               (moo-sname->tag var-name)
-                               ))
+                               (moo-sname->tag var-name)))
                              ;; Type::member
                              ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
                               (if (semantic-tag-of-class-p var-tag 'function)
@@ -543,6 +542,7 @@ WSPACE is the padding."
             pure-virtual-flag-p
             template-specifier-p
             filename-p
+            throws-p
             item)
         (while r
           (setq item (pop r))
@@ -573,6 +573,8 @@ WSPACE is the padding."
              (setq pure-virtual-flag-p (pop r)))
             (:template-specifier
              (setq template-specifier-p (pop r)))
+            (:throws
+             (setq throws-p (pop r)))
             (:filename
              (setq filename-p (pop r)))
             (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
@@ -822,18 +824,20 @@ WSPACE is the padding."
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
 (defun moo-desperately-find-sname (stag)
-  (let ((file-tags (semantic-fetch-tags)))
-    (apply #'append
+  (let* ((file-tags (semantic-fetch-tags))
+         (own-tags (moo-filter-tag-by-name stag file-tags))
+         (include-tags (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
+                               file-tags))
+         (include-filenames (delq nil (mapcar #'semantic-dependency-tag-file include-tags))))
+    (apply #'append 
            (apply #'append
-                  (mapcar (lambda (tag)
-                            (let ((filename (semantic-dependency-tag-file tag)))
-                              (moo-tag-put-filename-to-types
-                               (filter (lambda(tag1) (string= (car tag1) stag))
-                                       (semantic-file-tag-table filename))
-                               filename)))
-                          (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
-                                  file-tags)))
-           (list (moo-filter-tag-by-name stag file-tags)))))
+                  (mapcar (lambda (filename)
+                            (moo-tag-put-filename-to-types
+                             (filter (lambda (tag) (string= (car tag) stag))
+                                     (semantic-file-tag-table filename))
+                             filename))
+                          include-filenames))
+           (list own-tags))))
 
 (defmacro mp-backward-char-skip<> (&optional arg)
   "Moves point backward until [A-Za-z_0-9] is encountered.
