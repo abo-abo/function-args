@@ -116,7 +116,7 @@
 (defvar fa-lst nil
   "Current function arguments variants.")
 
-(defvar fa-arg nil
+(defvar fa-arg 0
   "Current function argument.")
 
 (defvar fa-idx nil
@@ -385,6 +385,11 @@ Return non-nil if it was updated."
                         (semantic-tag-of-class-p ctxt-type 'variable)
                         (looking-back ":[^;]*"))
                    (moo-get-constructors (moo-sname->tag (car function))))
+                  ;; parent class init inside constructor
+                  ((and (semantic-tag-p ctxt-type)
+                        (semantic-tag-of-class-p ctxt-type 'type)
+                        (looking-back ":[^;]*"))
+                    (moo-get-constructors ctxt-type))
                   ;; global function invocation
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
@@ -520,7 +525,7 @@ WSPACE is the padding."
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
 (defun fa-tfunction->fal (sm)
-  (let ((filename (semantic--tag-get-property sm :filename))
+  (let ((filename (moo-tag-get-filename sm))
         (position (moo-tag-get-position sm))
         (name (pop sm))
         (name-e (pop sm)))
