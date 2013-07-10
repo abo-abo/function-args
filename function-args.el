@@ -246,13 +246,19 @@
        ;; ———  ————————————————————————————————————————————————————————————————————————
        ((= (length symbol) 1)
         (let* ((sym-name (car symbol))
-               (candidates
-                (or (semantic-analyze-possible-completions
-                     (semantic-analyze-current-context pos))
-                (and (featurep 'semantic/db)
-                     (semanticdb-minor-mode-p)
-                     (semanticdb-fast-strip-find-results
-                      (semanticdb-deep-find-tags-for-completion sym-name))))))
+               (candidates-1 (semantic-analyze-possible-completions
+                              (semantic-analyze-current-context pos)))
+               (candidates-2 (and (featurep 'semantic/db)
+                                  (semanticdb-minor-mode-p)
+                                  (semanticdb-fast-strip-find-results
+                                   (semanticdb-deep-find-tags-for-completion sym-name))))
+               (candidates 
+                (append 
+                 candidates-1 
+                 (filter (lambda (tag) (semantic-tag-of-class-p tag 'type))
+                         (cl-delete-duplicates 
+                          candidates-2
+                          :test (lambda (t1 t2) (equal (car t1) (car t2))))))))
           (moo-handle-completion sym-name candidates)))
        ;; ———  ———————————————————————————————————————————————————————————————————————
        (t
