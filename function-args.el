@@ -398,6 +398,10 @@ Return non-nil if it was updated."
                (search-backward (car function))
                (let ((ctxt-type (moo-ctxt-type)))
                  (cond
+                  ;; happens sometimes
+                  ((stringp ctxt-type)
+                   (mp-backward-char-skip<>)
+                   (moo-get-constructors (moo-ctxt-type)))
                   ;; variable init inside constructor
                   ((and (semantic-tag-p ctxt-type)
                         (semantic-tag-of-class-p ctxt-type 'variable)
