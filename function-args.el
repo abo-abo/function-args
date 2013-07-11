@@ -192,6 +192,7 @@
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
   (interactive "d")
+  (unless pos (setq pos (point)))
   (when (semantic-active-p)
     (let ((symbol (semantic-ctxt-current-symbol)))
       (cond
@@ -267,10 +268,9 @@
                (candidates
                 (append
                  candidates-1
-                 (filter (lambda (tag) (semantic-tag-of-class-p tag 'type))
-                         (cl-delete-duplicates
-                          candidates-2
-                          :test (lambda (t1 t2) (equal (car t1) (car t2))))))))
+                 (cl-delete-duplicates
+                  candidates-2
+                  :test (lambda (t1 t2) (equal (car t1) (car t2)))))))
           (moo-handle-completion sym-name candidates)))
        ;; ———  ———————————————————————————————————————————————————————————————————————
        (t
