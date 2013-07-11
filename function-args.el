@@ -213,10 +213,15 @@
                               (or
                                ;; semantic may think it's a function
                                (let ((type-name (semantic-tag-get-attribute var-tag :type)))
-                                 (if (equal type-name "class")
-                                     ;; this happens sometimes
-                                     var-tag
-                                   (moo-stype->tag (car type-name))))
+                                 (cond
+                                  ;; this happens sometimes
+                                  ((equal type-name "class")
+                                   var-tag)
+                                  ;; this as well
+                                  ((equal type-name "namespace")
+                                   (moo-sname->tag var-name))
+                                  (t
+                                   (moo-stype->tag (car type-name)))))
                                ;; this works sometimes
                                (moo-sname->tag var-name)))
                              ;; Type::member
@@ -755,7 +760,9 @@ WSPACE is the padding."
          (cons
           ;; own
           (let ((own-members
-                 (cl-delete-if (lambda (tag) (and (stringp (car tag)) (string= (car tag) "public")))
+                 (cl-delete-if (lambda (tag) (and (stringp (car tag))
+                                             (or (string= (car tag) "public")
+                                                 (string= (car tag) "private"))))
                   (semantic-tag-get-attribute ttype :members))))
             (apply #'append
                    own-members
