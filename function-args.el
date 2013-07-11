@@ -788,10 +788,9 @@ WSPACE is the padding."
       (forward-sexp))
     (let ((str (caar candidates))
           (case-fold-search nil))
-      (backward-kill-word 1)
-      ;; remove the wildcard
-      (when (looking-back "_")
-        (backward-delete-char 1))
+      (if (re-search-backward prefix (line-beginning-position) t)
+          (delete-region (match-beginning 0) (match-end 0))
+        (error "moo-handle-completion failed."))
       (insert str))
     (when (eq (cadar candidates) 'function)
       (insert "()")
