@@ -188,7 +188,7 @@
         (car tag)))
       (goto-char
        (cdr tag)))))
-
+
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
   (interactive "d")
@@ -239,9 +239,16 @@
                                     ((semantic-tag-of-class-p var-tag 'variable)
                                      (moo-tvar->ttype var-tag))
                                     (t (error "unexpected")))))))
+                 (pred (cond
+                        ((= (length mem-name) 0)
+                         #'identity)
+                        ;; wildcard
+                        ((eq ?_ (aref mem-name 0))
+                         `(lambda(x) (cl-search ,(substring mem-name 1) (downcase (car x)))))
+                        (t
+                         (lambda(x) (eq 0 (cl-search mem-name (downcase (car x))))))))
                  (candidates (delete-dups
-                              (filter (lambda(x) (eq 0 (cl-search mem-name (car x))))
-                                      tmembers))))
+                              (filter pred tmembers))))
             (moo-handle-completion mem-name candidates))))
        ;; ———  ————————————————————————————————————————————————————————————————————————
        ((= (length symbol) 1)
@@ -252,11 +259,11 @@
                                   (semanticdb-minor-mode-p)
                                   (semanticdb-fast-strip-find-results
                                    (semanticdb-deep-find-tags-for-completion sym-name))))
-               (candidates 
-                (append 
-                 candidates-1 
+               (candidates
+                (append
+                 candidates-1
                  (filter (lambda (tag) (semantic-tag-of-class-p tag 'type))
-                         (cl-delete-duplicates 
+                         (cl-delete-duplicates
                           candidates-2
                           :test (lambda (t1 t2) (equal (car t1) (car t2))))))))
           (moo-handle-completion sym-name candidates)))
@@ -781,10 +788,11 @@ WSPACE is the padding."
       (forward-sexp))
     (let ((str (caar candidates))
           (case-fold-search nil))
-      (if (looking-back (substring str 0 (length prefix)))
-          (insert (substring str (length prefix)))
-        (backward-kill-word 1)
-        (insert str)))
+      (backward-kill-word 1)
+      ;; remove the wildcard
+      (when (looking-back "_")
+        (backward-delete-char 1))
+      (insert str))
     (when (eq (cadar candidates) 'function)
       (insert "()")
       (backward-char)))
@@ -843,7 +851,7 @@ WSPACE is the padding."
          (include-tags (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
                                file-tags))
          (include-filenames (delq nil (mapcar #'semantic-dependency-tag-file include-tags))))
-    (apply #'append 
+    (apply #'append
            (apply #'append
                   (mapcar (lambda (filename)
                             (moo-tag-put-filename-to-types
