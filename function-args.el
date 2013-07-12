@@ -739,11 +739,11 @@ WSPACE is the padding."
       (let (retval)
         (let* ((position (point))
                (scope (semantic-calculate-scope position)))
-          (condition-case ex
-              (setq retval (catch 'unfindable
-                             (semantic-analyze-find-tag-sequence
-                              str scope 'prefixtypes 'unfindable)))
-            ('error nil))
+          (ignore-errors
+            (setq retval
+                  (catch 'unfindable
+                    (semantic-analyze-find-tag-sequence
+                     str scope 'prefixtypes 'unfindable))))
           ;; TODO: check (= (length retval) 1)
           (car retval)))))
 
@@ -848,9 +848,7 @@ WSPACE is the padding."
         (moo-sname->tag var-name)
       type-tag)))
 
-(defun filter (pred lst)
-  (delq nil
-        (mapcar (lambda (x) (and (funcall pred x) x)) lst)))
+(defalias 'filter 'cl-remove-if-not)
 
 (defun moo-tag-get-scope (tag)
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
