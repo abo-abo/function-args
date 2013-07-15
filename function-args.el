@@ -400,32 +400,36 @@ Return non-nil if it was updated."
                  (cond
                   ;; happens sometimes
                   ((stringp ctxt-type)
-                   (mp-backward-char-skip<>)
-                   (moo-get-constructors (moo-ctxt-type)))
-                  ;; variable init inside constructor
+                   (if (looking-back ")[ \n\t]*:[^;()]*")
+                       (moo-get-constructors (moo-sname->tag (car function)))
+                     (mp-backward-char-skip<>)
+                     (moo-get-constructors (moo-ctxt-type))))
                   ((and (semantic-tag-p ctxt-type)
-                        (semantic-tag-of-class-p ctxt-type 'variable)
-                        (looking-back ":[^;]*"))
-                   (moo-get-constructors (moo-sname->tag (car function))))
-                  ;; parent class init inside constructor
-                  ((and (semantic-tag-p ctxt-type)
-                        (semantic-tag-of-class-p ctxt-type 'type)
-                        (looking-back ":[^;]*"))
-                    (moo-get-constructors ctxt-type))
+                   (cond
+                    ;; variable init inside constructor
+                    ((and (semantic-tag-of-class-p ctxt-type 'variable)
+                               (looking-back ":[^;]*"))
+                         (moo-get-constructors (moo-sname->tag (car function))))
+                    ;; parent class init inside constructor
+                    ;; or constructor as part of expression
+                    ((semantic-tag-of-class-p ctxt-type 'type)
+                     (moo-get-constructors ctxt-type))
+                    ;; global function call
+                    ((semantic-tag-of-class-p ctxt-type 'function)
+                     (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
+                         (list ctxt-type)
+                       (mp-backward-char-skip<>)
+                       (moo-get-constructors (moo-ctxt-type)))))))
                   ;; global function invocation
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
                            (moo-desperately-find-sname (car function))))
-                  ;; constructor as part of expression
-                  ((semantic-tag-of-class-p ctxt-type 'type)
-                   (moo-get-constructors ctxt-type))
                   ;; try to match a variable with a constructor declaration:
                   ;; move to the type
                   (t
                    (mp-backward-char-skip<>)
-                   (let* ((ctxt-type (moo-ctxt-type))
-                          (scope (moo-tag-get-scope ctxt-type)))
-                     (moo-get-constructors (moo-dereference-typedef ctxt-type scope)))))))
+                   (let* ((ctxt-type (moo-ctxt-type)))
+                     (moo-get-constructors (moo-dereference-typedef ctxt-type)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
                (when (looking-at ">")
@@ -704,6 +708,7 @@ WSPACE is the padding."
              ctxt)))))
 
 (defun moo-get-constructors (type)
+  (setq type (moo-dereference-typedef type))
   (let ((enump (moo-tenum->tmembers type)))
     (cond
      ;; enum
@@ -826,9 +831,10 @@ WSPACE is the padding."
          (type-tag (semantic-analyze-tag-type var-tag scope)))
     type-tag))
 
-(defun moo-dereference-typedef (tag scope)
+(defun moo-dereference-typedef (tag)
   "if tag is a typedef, search for it in scope."
-  (let ((typedef-p (semantic-tag-get-attribute tag :typedef))
+  (let ((typedef-p (moo-typedefp tag))
+        (scope (moo-tag-get-scope tag))
         defs)
     (if (null typedef-p)
         tag
@@ -842,9 +848,8 @@ WSPACE is the padding."
 (defun moo-tvar->ttype (var-tag)
   (let* ((var-name (car var-tag))
          (var-stype (car (semantic-tag-get-attribute var-tag :type)))
-         (type-tag (moo-stype->tag var-stype))
-         (type-typedef-p (semantic-tag-get-attribute type-tag :typedef)))
-    (if type-typedef-p
+         (type-tag (moo-stype->tag var-stype)))
+    (if (moo-typedefp type-tag)
         (moo-sname->tag var-name)
       type-tag)))
 
@@ -853,9 +858,28 @@ WSPACE is the padding."
 (defun moo-tag-get-scope (tag)
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
+(defun moo-get-tag-by-name (sname tlist)
+  (cl-mapcan
+   (lambda (tag)
+     (if (string= (car tag) sname)
+         (list tag)
+       (and (moo-namespacep tag)
+            (moo-get-tag-by-name
+             sname
+             (semantic-tag-get-attribute tag :members)))))
+   tlist))
+
+(defun moo-typedefp (tag)
+  (semantic-tag-get-attribute tag :typedef))
+
+(defun moo-namespacep (tag)
+  (let ((attr (semantic-tag-get-attribute tag :type)))
+    (and (stringp attr)
+         (string= attr "namespace"))))
+
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
-         (own-tags (moo-filter-tag-by-name stag file-tags))
+         (own-tags (moo-get-tag-by-name stag file-tags))
          (include-tags (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
                                file-tags))
          (include-filenames (delq nil (mapcar #'semantic-dependency-tag-file include-tags))))
