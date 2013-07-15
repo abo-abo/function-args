@@ -400,7 +400,7 @@ Return non-nil if it was updated."
                  (cond
                   ;; happens sometimes
                   ((stringp ctxt-type)
-                   (if (looking-back ")[ \n\t]*:[^;()]*")
+                   (if (looking-back "\\()[ \n\t]*:[^;()]*\\)\\|,[^;()]*")
                        (moo-get-constructors (moo-sname->tag (car function)))
                      (mp-backward-char-skip<>)
                      (moo-get-constructors (moo-ctxt-type))))
@@ -760,9 +760,14 @@ WSPACE is the padding."
          (semantic-tag-get-attribute tag :members))))
 
 (defun moo-get-member-functions (ttype)
-  (and (semantic-tag-of-class-p ttype 'type)
-       (filter (lambda(tag) (semantic-tag-of-class-p tag 'function))
-               (moo-ttype->tmembers ttype))))
+  (cond
+   ((semantic-tag-of-class-p ttype 'type)
+    (filter (lambda(tag) (semantic-tag-of-class-p tag 'function))
+            (moo-ttype->tmembers ttype)))
+   ((semantic-tag-of-class-p ttype 'variable)
+    (moo-get-member-functions
+     (moo-stype->tag
+      (car (semantic-tag-get-attribute ttype :type)))))))
 
 (defun moo-ttype->tmembers (ttype)
   (apply #'append
@@ -825,11 +830,14 @@ WSPACE is the padding."
            (mapcar semantic-ia-completion-format-tag-function candidates))))))))
 
 (defun moo-sname->tag (str-name)
-  (let* ((scope (semantic-calculate-scope (point)))
-         (var-tag (semantic-analyze-select-best-tag
-                   (semantic-scope-find str-name nil )))
-         (type-tag (semantic-analyze-tag-type var-tag scope)))
-    type-tag))
+  (let ((var-tag (semantic-analyze-select-best-tag
+                   (semantic-scope-find str-name nil))))
+    (or (and var-tag
+             (ignore-errors
+               (semantic-analyze-tag-type
+                var-tag
+                (semantic-calculate-scope (point)))))
+        (car (moo-desperately-find-sname str-name)))))
 
 (defun moo-dereference-typedef (tag)
   "if tag is a typedef, search for it in scope."
@@ -863,7 +871,7 @@ WSPACE is the padding."
    (lambda (tag)
      (if (string= (car tag) sname)
          (list tag)
-       (and (moo-namespacep tag)
+       (and (or (moo-namespacep tag) (semantic-tag-of-class-p tag 'type))
             (moo-get-tag-by-name
              sname
              (semantic-tag-get-attribute tag :members)))))
