@@ -413,7 +413,9 @@ Return non-nil if it was updated."
                     ;; parent class init inside constructor
                     ;; or constructor as part of expression
                     ((semantic-tag-of-class-p ctxt-type 'type)
-                     (moo-get-constructors ctxt-type))
+                     (or (moo-get-constructors ctxt-type)
+                          (moo-get-constructors
+                           (moo-tvar->ttype (car (moo-desperately-find-sname (car function)))))))
                     ;; global function call
                     ((semantic-tag-of-class-p ctxt-type 'function)
                      (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
@@ -708,6 +710,7 @@ WSPACE is the padding."
              ctxt)))))
 
 (defun moo-get-constructors (type)
+  (ignore-errors
   (setq type (moo-dereference-typedef type))
   (let ((enump (moo-tenum->tmembers type)))
     (cond
@@ -734,7 +737,7 @@ WSPACE is the padding."
      ;; else
      (t
       (filter #'moo-tag-constructor-p
-              (moo-get-member-functions type))))))
+              (moo-get-member-functions type)))))))
 
 (defun moo-tag-constructor-p (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
