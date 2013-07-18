@@ -194,7 +194,7 @@
      ;; fall back to semantic
      ((null matches)
       (save-excursion
-        (search-backward var-name)
+        (search-backward str)
         (semantic-analyze-interesting-tag
          (semantic-analyze-current-context (point)))))
      ((eq 1 (length matches))
