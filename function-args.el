@@ -188,6 +188,19 @@
         (car tag)))
       (goto-char
        (cdr tag)))))
+(defun moo-tag-at-point (str)
+  (let ((matches (moo-desperately-find-sname str)))
+    (cond
+     ;; fall back to semantic
+     ((null matches)
+      (save-excursion
+        (search-backward var-name)
+        (semantic-analyze-interesting-tag
+         (semantic-analyze-current-context (point)))))
+     ((eq 1 (length matches))
+      (car matches))
+     (t
+      (error "multiple definitions for %s" str)))))
 
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
@@ -203,10 +216,7 @@
               (mem-name (cadr symbol))
               (var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
               (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")))
-          (let* ((var-tag (save-excursion
-                            (search-backward var-name)
-                            (semantic-analyze-interesting-tag
-                             (semantic-analyze-current-context (point)))))
+          (let* ((var-tag (moo-tag-at-point var-name))
                  (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
                  (tmembers (moo-ttype->tmembers
                             (cond
