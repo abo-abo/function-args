@@ -142,13 +142,13 @@
     (error "not inside function")))
   (while (looking-back " ")
     (backward-char))
-  (setq fa-lst (fa-calculate (point)))
+  (setq fa-lst (fa-calculate))
   (if (eq (length fa-lst) 0)
       (message "nothing found")
     (forward-char)
     (setq fa-idx 0)
-    (fa-update-arg)
     (setq fa-hint-pos (point))
+    (fa-update-arg)
     (fa-do-show)
     (fa-start-tracking point)))
 
@@ -188,6 +188,7 @@
         (car tag)))
       (goto-char
        (cdr tag)))))
+
 (defun moo-tag-at-point (str)
   (let ((matches (moo-desperately-find-sname str)))
     (cond
@@ -391,7 +392,7 @@ Return non-nil if it was updated."
               (semantic-tag-get-attribute type :members))))
    types-list))
 
-(defun fa-calculate (pos)
+(defun fa-calculate ()
   "Return current function (or functions in case of overloading) in the form:
  ((name-1 arg-1 arg-2 ...) (name-2 arg-1 arg2 ...) ...)."
   (let* ((function (semantic-ctxt-current-symbol))
@@ -479,7 +480,7 @@ Return non-nil if it was updated."
     (or (mapcar #'fa-tfunction->fal result)
         ;; fall back to semantic
         (let ((fntag (semantic-analyze-find-tag-sequence
-                      function (semantic-calculate-scope pos))))
+                      function (semantic-calculate-scope (point)))))
           (and fntag
                (not (stringp (car (last fntag))))
                (setq fntag (car (last fntag)))
