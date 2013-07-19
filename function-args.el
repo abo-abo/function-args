@@ -401,7 +401,7 @@ Return non-nil if it was updated."
               ;; semantic didn't recognize anything
               ;; try a class temp initialization
               ((= 0 (length function))
-               (mp-backward-char-skip<>)
+               (fa-backward-char-skip<>)
                (moo-get-constructors (moo-ctxt-type)))
               ;; semantic gave just a list with one string - a variable name
               ((= 1 (length function))
@@ -412,7 +412,7 @@ Return non-nil if it was updated."
                   ((stringp ctxt-type)
                    (if (looking-back "\\()[ \n\t]*:[^;()]*\\)\\|,[^;()]*")
                        (moo-get-constructors (moo-sname->tag (car function)))
-                     (mp-backward-char-skip<>)
+                     (fa-backward-char-skip<>)
                      (moo-get-constructors (moo-ctxt-type))))
                   ((and (semantic-tag-p ctxt-type)
                    (cond
@@ -430,7 +430,7 @@ Return non-nil if it was updated."
                     ((semantic-tag-of-class-p ctxt-type 'function)
                      (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
                          (list ctxt-type)
-                       (mp-backward-char-skip<>)
+                       (fa-backward-char-skip<>)
                        (moo-get-constructors (moo-ctxt-type)))))))
                   ;; global function invocation
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
@@ -439,17 +439,17 @@ Return non-nil if it was updated."
                   ;; try to match a variable with a constructor declaration:
                   ;; move to the type
                   (t
-                   (mp-backward-char-skip<>)
+                   (fa-backward-char-skip<>)
                    (let* ((ctxt-type (moo-ctxt-type)))
                      (moo-get-constructors (moo-dereference-typedef ctxt-type)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
                (when (looking-at ">")
                  (forward-char)
-                 (mp-backward-char-skip<>))
+                 (fa-backward-char-skip<>))
                (let* ((ctxt-type (moo-ctxt-type))
                       (ctype (semantic-tag-get-attribute ctxt-type :type)))
-                 (mp-backward-char-skip<> -1)
+                 (fa-backward-char-skip<> -1)
                  (cond
                   ((looking-back "::")
                    (cl-delete-duplicates
@@ -914,7 +914,7 @@ WSPACE is the padding."
                           include-filenames))
            (list own-tags))))
 
-(defmacro mp-backward-char-skip<> (&optional arg)
+(defmacro fa-backward-char-skip<> (&optional arg)
   "Moves point backward until [A-Za-z_0-9] is encountered.
 Skips anything between matching <...>"
   (let ((dir (if arg -1 1))
