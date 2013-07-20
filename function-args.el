@@ -154,7 +154,8 @@
    (t
     (error "not inside function")))
   (while (looking-back " ")
-    (backward-char)))
+    (backward-char))
+  (point))
 
 (defmacro fa-idx-cycle (arg)
   "Cycle `fa-idx' by ARG and update the hint."
@@ -867,16 +868,18 @@ WSPACE is the padding."
       (setq defs (filter `(lambda (x) (and (eq (cadr x) 'type)
                                       (string= (car x) ,(car typedef-p))))
                          (semantic-tag-get-attribute scope :members)))
-      (if (eq (length defs) 1)
-          (car defs)
-        (error "typedef has multiple definitions")))))
+      (case (length defs)
+        (1 (car defs))
+        (0 (cons (car tag) (cdr typedef-p)))
+        (t (error "typedef has multiple definitions"))))))
+
 
 (defun moo-tvar->ttype (var-tag)
   (let* ((var-name (car var-tag))
          (var-stype (car (semantic-tag-get-attribute var-tag :type)))
          (type-tag (moo-stype->tag var-stype)))
     (if (moo-typedefp type-tag)
-        (moo-sname->tag var-name)
+        (moo-dereference-typedef type-tag)
       type-tag)))
 
 (defalias 'filter 'cl-remove-if-not)
