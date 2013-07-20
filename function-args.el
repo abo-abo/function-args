@@ -126,9 +126,22 @@
   "Stores superclasses tags.")
 
 ;; ——— Interactive functions —————————————————————————————————————————————————————————
-(defun fa-show (point)
+(defun fa-show ()
   "Display the arguments of the closest function."
-  (interactive "P")
+  (interactive)
+  (fa-do-position)
+  (setq fa-lst (fa-calculate))
+  (if (eq (length fa-lst) 0)
+      (message "nothing found")
+    (forward-char)
+    (setq fa-idx 0)
+    (setq fa-hint-pos (point))
+    (fa-update-arg)
+    (fa-do-show)
+    (fa-start-tracking)))
+
+(defun fa-do-position ()
+  "Position the cursor at the `(', which is logically closest"
   (cond
    ((looking-at "("))
    ((looking-back "(")
@@ -141,16 +154,7 @@
    (t
     (error "not inside function")))
   (while (looking-back " ")
-    (backward-char))
-  (setq fa-lst (fa-calculate))
-  (if (eq (length fa-lst) 0)
-      (message "nothing found")
-    (forward-char)
-    (setq fa-idx 0)
-    (setq fa-hint-pos (point))
-    (fa-update-arg)
-    (fa-do-show)
-    (fa-start-tracking point)))
+    (backward-char)))
 
 (defmacro fa-idx-cycle (arg)
   "Cycle `fa-idx' by ARG and update the hint."
@@ -311,8 +315,8 @@
       (overlay-put fa-overlay 'display str)
       (overlay-put fa-overlay 'after-string ""))))
 
-(defun fa-start-tracking (point)
-  (interactive "P")
+(defun fa-start-tracking ()
+  (interactive)
   (let ((beg (save-excursion (re-search-backward "(" nil t) (point)))
         (end (save-excursion (re-search-forward ")" nil t) (- (point) 1))))
     (setq fa-beg-pos beg)
