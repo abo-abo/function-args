@@ -197,16 +197,24 @@
 (defun moo-tag-at-point (str)
   (let ((matches (moo-desperately-find-sname str)))
     (cond
-     ;; fall back to semantic
-     ((null matches)
-      (save-excursion
-        (search-backward str)
-        (semantic-analyze-interesting-tag
-         (semantic-analyze-current-context (point)))))
-     ((eq 1 (length matches))
-      (car matches))
-     (t
-      (error "multiple definitions for %s" str)))))
+      ;; fall back to semantic
+      ((null matches)
+       (save-excursion
+         (search-backward str)
+         (semantic-analyze-interesting-tag
+          (semantic-analyze-current-context (point)))))
+      ((eq 1 (length matches))
+       (car matches))
+      (t
+       ;; if they're all namespaces, unite them
+       (if (cl-every #'moo-namespacep matches)
+           `(,str type
+                  (:type
+                   namespace
+                   :members
+                   (,@(apply #'append
+                            (mapcar #'moo-ttype->tmembers matches)))))
+         (error "multiple definitions for %s" str))))))
 
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
