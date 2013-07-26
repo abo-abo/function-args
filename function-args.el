@@ -143,18 +143,19 @@
 (defun fa-do-position ()
   "Position the cursor at the `(', which is logically closest"
   (cond
-   ((looking-at "("))
-   ((looking-back "(")
-    (backward-char))
-   ((looking-back "^\\([^(\n]*\\)([^(\n]*")
-    (re-search-backward "("))
-   ((looking-at "[^\n]*([^\n]*$")
-    (re-search-forward "(")
-    (backward-char))
-   (t
-    (error "not inside function")))
-  (while (looking-back " ")
-    (backward-char))
+    ((looking-at "("))
+    ((looking-back "(")
+     (backward-char))
+    ((looking-back "^\\([^(\n]*\\)([^(\n]*")
+     (re-search-backward "("))
+    ((looking-at "[^\n]*([^\n]*$")
+     (re-search-forward "(")
+     (backward-char))
+    (t
+     (error "not inside function")))
+  (unless (looking-back "^[ \t]*")
+    (while (looking-back " ")
+      (backward-char)))
   (point))
 
 (defmacro fa-idx-cycle (arg)
@@ -207,21 +208,22 @@
        (car matches))
       (t
        ;; if they're all namespaces, unite them
-       (if (cl-every #'moo-namespacep matches)
+       ;; (if (cl-every #'moo-namespacep matches)
            `(,str type
                   (:type
                    namespace
                    :members
                    (,@(apply #'append
                             (mapcar #'moo-ttype->tmembers matches)))))
-         (error "multiple definitions for %s" str))))))
+         ;; (error "multiple definitions for %s" str))
+       ))))
 
 (defun moo-complete (&optional pos)
   "Complete current C++ symbol at POS."
   (interactive "d")
   (unless pos (setq pos (point)))
   (when (semantic-active-p)
-    (let ((symbol (semantic-ctxt-current-symbol)))
+    (let ((symbol (moo-ctxt-current-symbol)))
       (cond
        ;; ———  ———————————————————————————————————————————————————————————————————————
        ((= (length symbol) 2)
@@ -404,11 +406,18 @@ Return non-nil if it was updated."
       (mapcar (lambda(tag) (moo-tag-put-filename tag filename))
               (semantic-tag-get-attribute type :members))))
    types-list))
+
+(defun moo-ctxt-current-symbol ()
+  (or (semantic-ctxt-current-symbol)
+      (save-excursion
+        (fa-backward-char-skip<>)
+        (semantic-ctxt-current-symbol))))
+
 
 (defun fa-calculate ()
   "Return current function (or functions in case of overloading) in the form:
  ((name-1 arg-1 arg-2 ...) (name-2 arg-1 arg2 ...) ...)."
-  (let* ((function (semantic-ctxt-current-symbol))
+  (let* ((function (moo-ctxt-current-symbol))
          (result
            (save-excursion
              (cond
