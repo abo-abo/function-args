@@ -732,7 +732,7 @@ WSPACE is the padding."
         (error "nothing under cursor")
       (setq ctxt (car (oref ctxt prefix)))
       (cond ((stringp ctxt)
-             ctxt)
+             (or (moo-tag-at-point ctxt) ctxt))
             ;; check if variable constructor initialization is mistaken
             ;; for function prototype definition:
             ((and (eq (nth 1 ctxt) 'function)
