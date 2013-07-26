@@ -248,7 +248,8 @@
                                   ((equal type-name "namespace")
                                    (moo-sname->tag var-name))
                                   (t
-                                   (moo-stype->tag (car type-name)))))
+                                   (or (moo-stype->tag (car type-name))
+                                       (moo-tag-at-point (car type-name))))))
                                ;; this works sometimes
                                (moo-sname->tag var-name)))
                              ;; Type::member
