@@ -735,17 +735,18 @@ WSPACE is the padding."
     (if (null ctxt)
         (error "nothing under cursor")
       (setq ctxt (car (oref ctxt prefix)))
-      (cond ((stringp ctxt)
-             (or (moo-tag-at-point ctxt) ctxt))
-            ;; check if variable constructor initialization is mistaken
-            ;; for function prototype definition:
-            ((and (eq (nth 1 ctxt) 'function)
-               (semantic-tag-get-attribute ctxt :prototype-flag)
-               (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
-                 (and arg1 (stringp arg1) (string= arg1 ""))))
-             (semantic-tag-get-attribute ctxt :type))
-            (t
-             ctxt)))))
+      (ignore-errors
+        (cond ((stringp ctxt)
+               (or (moo-tag-at-point ctxt) ctxt))
+              ;; check if variable constructor initialization is mistaken
+              ;; for function prototype definition:
+              ((and (eq (nth 1 ctxt) 'function)
+                    (semantic-tag-get-attribute ctxt :prototype-flag)
+                    (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
+                      (and arg1 (stringp arg1) (string= arg1 ""))))
+               (semantic-tag-get-attribute ctxt :type))
+              (t
+               ctxt))))))
 
 (defun moo-get-constructors (type)
   (ignore-errors
