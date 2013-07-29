@@ -448,14 +448,18 @@ Return non-nil if it was updated."
                     ;; or constructor as part of expression
                     ((semantic-tag-of-class-p ctxt-type 'type)
                      (or (moo-get-constructors ctxt-type)
-                          (moo-get-constructors
-                           (moo-tvar->ttype (car (moo-desperately-find-sname (car function)))))))
+                         (moo-get-constructors
+                          (moo-tvar->ttype (car (moo-desperately-find-sname (car function)))))
+                         (moo-get-constructors
+                          (moo-tag-at-point (car ctxt-type)))))
                     ;; global function call
                     ((semantic-tag-of-class-p ctxt-type 'function)
                      (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
                          (list ctxt-type)
-                       (fa-backward-char-skip<>)
-                       (moo-get-constructors (moo-ctxt-type)))))))
+                       (or (progn
+                             (fa-backward-char-skip<>)
+                             (moo-get-constructors (moo-ctxt-type)))
+                           (list ctxt-type)))))))
                   ;; global function invocation
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
