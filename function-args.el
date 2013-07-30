@@ -749,7 +749,7 @@ WSPACE is the padding."
                     (semantic-tag-get-attribute ctxt :prototype-flag)
                     (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
                       (and arg1 (stringp arg1) (string= arg1 ""))))
-               (semantic-tag-get-attribute ctxt :type))
+               (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
               (t
                ctxt))))))
 
