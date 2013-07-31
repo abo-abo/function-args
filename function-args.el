@@ -245,7 +245,7 @@
                                      ((equal type-name "class")
                                       var-tag)
                                      ;; this as well
-                                     ((equal type-name "namespace")
+                                     ((or (equal type-name "namespace") (eq type-name 'namespace))
                                       (moo-sname->tag var-name))
                                      (t
                                       (or (moo-stype->tag (car type-name))
@@ -477,9 +477,18 @@ Return non-nil if it was updated."
                      (moo-get-constructors (moo-dereference-typedef ctxt-type)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
-               (when (looking-at ">")
-                 (forward-char)
-                 (fa-backward-char-skip<>))
+               (cond 
+                 ;; array or map of objects or operator []
+                 ;; function can be called with either . or -> or operator ()
+                 ((looking-at "]")
+                  (forward-char)
+                  (backward-list)
+                  ;; do something
+                  )
+                 ((looking-at ">")
+                  (forward-char)
+                  (fa-backward-char-skip<>)))
+               
                (let* ((ctxt-type (moo-ctxt-type))
                       (ctype (semantic-tag-get-attribute ctxt-type :type)))
                  (fa-backward-char-skip<> -1)
