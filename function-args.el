@@ -4,7 +4,7 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
-;; Version: 0.1
+;; Version: 0.2
 
 ;; This file is not part of GNU Emacs
 
@@ -477,7 +477,7 @@ Return non-nil if it was updated."
                      (moo-get-constructors (moo-dereference-typedef ctxt-type)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
-               (cond 
+               (cond
                  ;; array or map of objects or operator []
                  ;; function can be called with either . or -> or operator ()
                  ((looking-at "]")
@@ -488,7 +488,7 @@ Return non-nil if it was updated."
                  ((looking-at ">")
                   (forward-char)
                   (fa-backward-char-skip<>)))
-               
+
                (let* ((ctxt-type (moo-ctxt-type))
                       (ctype (semantic-tag-get-attribute ctxt-type :type)))
                  (fa-backward-char-skip<> -1)
@@ -607,7 +607,7 @@ WSPACE is the padding."
    (propertize (cdr cell) 'face
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
-(defun fa-tfunction->fal (sm)
+(defun fa-tfunction->fal (sm &optional output-string)
   (let ((filename (moo-tag-get-filename sm))
         (position (moo-tag-get-position sm))
         (name (pop sm))
@@ -666,20 +666,36 @@ WSPACE is the padding."
             (:filename
              (setq filename-p (pop r)))
             (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
-        (cons
-         ;; name and type part
-         (list (and template-p
-                    (concat "template " (fa-ttemplate-specifier->str template-p) " "))
-               (if constructor-flag-p
-                   name
-                 (if type-p
-                     (fa-ttype->str type-p)
-                   "?"))
-               (cons filename
-                     position))
-         ;; arguments part
-         (mapcar #'fa-tvar->cons
-                 (mapcar (lambda (x) (if (string= (car x) "") (setcar x "")) x) arguments-p)))))))
+        (let ((argument-conses (mapcar
+                                #'fa-tvar->cons
+                                (mapcar
+                                 (lambda (x) (if (string= (car x) "") (setcar x "")) x)
+                                 arguments-p))))
+          (if (null output-string)
+              (cons
+               ;; name and type part
+               (list (and template-p
+                          (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+                     (if constructor-flag-p
+                         name
+                       (if type-p
+                           (fa-ttype->str type-p)
+                         "?"))
+                     (cons filename
+                           position))
+               ;; arguments part
+               argument-conses)
+            ;; ——— output a string instead —————————————————————————————————————————————
+            (concat
+             (and template-p (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+             (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
+             (if type-p (fa-ttype->str type-p) "?")
+             " " name
+             "("
+             (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
+                        argument-conses
+                        ", ")
+             ");")))))))
 
 (defun fa-tvar->cons (sm)
   (let ((name (pop sm))
@@ -852,7 +868,7 @@ WSPACE is the padding."
 
 (defun moo-ttype->tsuperclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
-
+
 (defun moo-handle-completion (prefix candidates)
   (cond
    ((null candidates)
@@ -883,7 +899,10 @@ WSPACE is the padding."
             (insert tc))
         (with-output-to-temp-buffer "*Completions*"
           (display-completion-list
-           (mapcar semantic-ia-completion-format-tag-function candidates))))))))
+           (mapcar #'moo-tag->str candidates))))))))
+
+(defun moo-tag->str (tag)
+  (fa-tfunction->fal tag t))
 
 (defun moo-sname->tag (str-name)
   (let ((var-tag (semantic-analyze-select-best-tag
@@ -978,6 +997,64 @@ Skips anything between matching <...>"
                    (,char-inc (cl-incf n))
                    (,char-dec (cl-decf n)))))
            (backward-char ,dir))))))
+
+(defmacro and* (&rest predicates)
+  "Return a lambda that combines the predicates with an and"
+  `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
+                       predicates))))
+
+(defun moo-functionp (tag)
+  (semantic-tag-of-class-p tag 'function))
+
+(defun moo-virtualp (function-tag)
+  (and
+   (member "virtual"
+           (semantic-tag-get-attribute
+            function-tag :typemodifiers))
+   ;; don't want distructors
+   (not (semantic-tag-get-attribute
+         function-tag :destructor-flag))))
+
+(defun moo-propose-virtual ()
+  (interactive)
+  (let ((stype (c++-get-class-name)))
+    (when stype
+      (let ((ttype (moo-tag-at-point stype)))
+        (when ttype
+          (let ((virtuals (filter (and* moo-functionp moo-virtualp)
+                                  (moo-ttype->tmembers ttype))))
+            (setq virtuals (sort virtuals (lambda (a b) (string< (car a) (car b)))))
+            (moo-handle-completion "" virtuals)))))))
+
+(defun c++-get-class-name ()
+  (interactive)
+  (or (car (c++-get-class-name-and-template))
+      (message "could not match class")))
+
+(defun c++-get-class-name-and-template ()
+   (ignore-errors
+     (save-excursion
+       (let ((name (with-syntax-table c++-braces-table
+                     (up-list)
+                     (backward-list)
+                     (when (re-search-backward
+                            "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{]*?")
+                       (match-string-no-properties 1))))
+             template)
+         (when name
+           ;; try to match the template as well
+           (when (looking-back ">[\n \t]*")
+             (let ((end (progn (goto-char (match-beginning 0)) (point)))
+                   (beg (ignore-errors (forward-char)(backward-list)(point))))
+               (when end
+                 (setq template (buffer-substring-no-properties (1+ beg) end))))))
+         (cons name template)))))
+
+(defvar c++-braces-table
+  (let ((table (make-char-table 'syntax-table nil)))
+    (modify-syntax-entry ?{ "(}" table)
+    (modify-syntax-entry ?} "){" table)
+    table))
 
 (provide 'function-args)
 ;;; function-args.el ends here

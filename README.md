@@ -59,6 +59,10 @@ It's essentially a c++-specific version 'semantic-ia-complete-symbol.
 It behaves better, because it accounts more for function overloading and inheritance.
 You can invoke it with `M-o` by default.
 
+### `moo-propose-virtual`
+
+Lists the virtual members of current class' parents.
+
 # Bugs
 
 ### Reporting
