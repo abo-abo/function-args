@@ -397,7 +397,7 @@ Return non-nil if it was updated."
 (defun moo-tag-put-filename (tag filename)
   (semantic--tag-put-property tag :filename filename))
 
-(defun moo-tag-get-position (tag)
+(defun moo-tag-beginning-position (tag)
   (let ((x (car (last tag))))
     (cond ((overlayp x)
            (overlay-start x))
@@ -405,9 +405,17 @@ Return non-nil if it was updated."
            (aref x 0))
           (t 0))))
 
+(defun moo-tag-end-position (tag)
+  (let ((x (car (last tag))))
+    (cond ((overlayp x)
+           (overlay-end x))
+          ((arrayp x)
+           (aref x 1))
+          (t 0))))
+
 (defun moo-tags-same-pos-p (tag1 tag2)
-  (and (equal (moo-tag-get-position tag1)
-              (moo-tag-get-position tag2))
+  (and (equal (moo-tag-beginning-position tag1)
+              (moo-tag-beginning-position tag2))
        (let ((fname1 (moo-tag-get-filename tag1))
              (fname2 (moo-tag-get-filename tag2)))
          ;; normally all tags should have fname, but some don't
@@ -470,13 +478,18 @@ Return non-nil if it was updated."
                           (moo-tag-at-point (car ctxt-type)))))
                     ;; global function call
                     ((semantic-tag-of-class-p ctxt-type 'function)
-                     (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
+                     (let ((prototype-flag-p
+                            (semantic-tag-get-attribute ctxt-type :prototype-flag))
+                           (tag-end (moo-tag-end-position ctxt-type)))
+                       (if (and prototype-flag-p
+                               (and tag-end (< (point) tag-end)))
+                           (or (progn
+                                 (fa-backward-char-skip<>)
+                                 (moo-get-constructors (moo-ctxt-type)))
+                               (list ctxt-type))
+                         ;; should remove duplicates here
                          (append (list ctxt-type)
-                                 (moo-desperately-find-sname (car function)))
-                       (or (progn
-                             (fa-backward-char-skip<>)
-                             (moo-get-constructors (moo-ctxt-type)))
-                           (list ctxt-type)))))))
+                                 (moo-desperately-find-sname (car function)))))))))
                   ;; global function invocation
                   ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                    (cl-mapcan #'fa-process-tag-according-to-class
@@ -621,7 +634,7 @@ WSPACE is the padding."
 
 (defun fa-tfunction->fal (sm &optional output-string)
   (let ((filename (moo-tag-get-filename sm))
-        (position (moo-tag-get-position sm))
+        (position (moo-tag-beginning-position sm))
         (name (pop sm))
         (name-e (pop sm)))
     (if (not (eq name-e 'function))
