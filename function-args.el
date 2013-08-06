@@ -217,6 +217,25 @@
                             (mapcar #'moo-ttype->tmembers matches)))))
          ;; (error "multiple definitions for %s" str))
        ))))
+
+;; this is similar to stype->tag
+;; I should refactor this
+(defun moo-complete-type-member (var-tag)
+  (let ((type-name (semantic-tag-get-attribute var-tag :type)))
+    (cond
+      ;; this happens sometimes
+      ((equal type-name "class")
+       var-tag)
+      ;; this as well
+      ((or (equal type-name "namespace") (eq type-name 'namespace))
+       (moo-sname->tag var-name))
+      (t
+       (when (listp type-name)
+         (setq type-name (car type-name)))
+       (or (moo-stype->tag type-name)
+           (moo-tag-at-point type-name))))))
+
+
 
 (defun moo-complete (arg)
   "Complete current C++ symbol at POS."
@@ -239,17 +258,7 @@
                                (var-used-as-classvar-p
                                 (or
                                  ;; semantic may think it's a function
-                                 (let ((type-name (semantic-tag-get-attribute var-tag :type)))
-                                   (cond
-                                     ;; this happens sometimes
-                                     ((equal type-name "class")
-                                      var-tag)
-                                     ;; this as well
-                                     ((or (equal type-name "namespace") (eq type-name 'namespace))
-                                      (moo-sname->tag var-name))
-                                     (t
-                                      (or (moo-stype->tag (car type-name))
-                                          (moo-tag-at-point (car type-name))))))
+                                 (moo-complete-type-member var-tag)
                                  ;; this works sometimes
                                  (moo-sname->tag var-name)))
                                ;; Type::member
@@ -257,14 +266,16 @@
                                 (if (semantic-tag-of-class-p var-tag 'function)
                                     (moo-sname->tag var-name)
                                   var-tag))
-                               ;; is it a smart pointer?
-                               ((and var-used-as-pointer-p (not var-pointer-p))
-                                (let ((type-template (semantic-tag-get-attribute
-                                                      (semantic-tag-get-attribute var-tag :type)
-                                                      :template-specifier)))
-                                  ;; assume that the first template parameter is the relevant one
-                                  ;; (normally, there should be only one anyway)
-                                  (moo-stype->tag (caar type-template))))
+                               (var-used-as-pointer-p
+                                ;; is it a usual pointer or a smart pointer?
+                                (if var-pointer-p
+                                    (moo-complete-type-member var-tag)
+                                  (let ((type-template (semantic-tag-get-attribute
+                                                        (semantic-tag-get-attribute var-tag :type)
+                                                        :template-specifier)))
+                                    ;; assume that the first template parameter is the relevant one
+                                    ;; (normally, there should be only one anyway)
+                                    (moo-stype->tag (caar type-template)))))
                                ;; otherwise just get its type
                                (t
                                 (cond ((semantic-tag-of-class-p var-tag 'type)
@@ -460,7 +471,8 @@ Return non-nil if it was updated."
                     ;; global function call
                     ((semantic-tag-of-class-p ctxt-type 'function)
                      (if (not (semantic-tag-get-attribute ctxt-type :prototype-flag))
-                         (list ctxt-type)
+                         (append (list ctxt-type)
+                                 (moo-desperately-find-sname (car function)))
                        (or (progn
                              (fa-backward-char-skip<>)
                              (moo-get-constructors (moo-ctxt-type)))
@@ -902,7 +914,11 @@ WSPACE is the padding."
            (mapcar #'moo-tag->str candidates))))))))
 
 (defun moo-tag->str (tag)
-  (fa-tfunction->fal tag t))
+  (or (ignore-errors (fa-tfunction->fal tag t))
+      (moo-vartag->str tag)))
+
+(defun moo-vartag->str (tag)
+  (car tag))
 
 (defun moo-sname->tag (str-name)
   (let ((var-tag (semantic-analyze-select-best-tag
