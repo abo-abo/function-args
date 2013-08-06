@@ -228,13 +228,12 @@
        var-tag)
       ;; this as well
       ((or (equal type-name "namespace") (eq type-name 'namespace))
-       (moo-sname->tag var-name))
+       (moo-sname->tag (car var-tag)))
       (t
        (when (listp type-name)
          (setq type-name (car type-name)))
        (or (moo-stype->tag type-name)
            (moo-tag-at-point type-name))))))
-
 
 
 (defun moo-complete (arg)
@@ -572,10 +571,15 @@ This includes the constructors of types with name STR."
         ;; TODO: this fails for namespaces such as std::
         (filename (moo-tag-get-filename ttype)))
     (mapcar (lambda (tag) (moo-tag-put-filename tag filename))
-            (moo-filter-tag-by-class 'function
-                                     (moo-filter-tag-by-name
-                                      str
-                                      (moo-ttype->tmembers ttype))))))
+            (let ((candidates (moo-filter-tag-by-name
+                               str
+                               (moo-ttype->tmembers ttype))))
+              (append
+                (moo-filter-tag-by-class 'function candidates)
+                (apply #'append
+                       (mapcar
+                        #'moo-get-constructors
+                        (moo-filter-tag-by-class 'type candidates))))))))
 
 (defun moo-filter-tag-by-name (sname members)
   (filter (lambda (tag) (string= (car tag) sname))
@@ -1034,6 +1038,9 @@ Skips anything between matching <...>"
 
 (defun moo-functionp (tag)
   (semantic-tag-of-class-p tag 'function))
+
+(defun moo-typep (tag)
+  (semantic-tag-of-class-p tag 'type))
 
 (defun moo-virtualp (function-tag)
   (and
