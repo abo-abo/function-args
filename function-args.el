@@ -31,6 +31,11 @@
 
 
 (require 'cl-lib)
+(eval-when-compile
+  (require 'cl)
+  (defvar c++-mode-map)
+  (defvar ac-menu)
+  (defvar auto-complete-mode))
 (require 'semantic/ia)
 (require 'semantic/db-find)
 (semantic-mode 1)
@@ -1040,7 +1045,7 @@ Skips anything between matching <...>"
                    (,char-dec (cl-decf n)))))
            (backward-char ,dir))))))
 
-(defmacro and* (&rest predicates)
+(defmacro fa-and (&rest predicates)
   "Return a lambda that combines the predicates with an and"
   `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
                        predicates))))
@@ -1066,51 +1071,64 @@ Skips anything between matching <...>"
     (when stype
       (let ((ttype (moo-tag-at-point stype)))
         (when ttype
-          (let ((virtuals (filter (and* moo-functionp moo-virtualp)
+          (let ((virtuals (filter (fa-and moo-functionp moo-virtualp)
                                   (moo-ttype->tmembers ttype))))
             (setq virtuals (sort virtuals (lambda (a b) (string< (car a) (car b)))))
             (moo-handle-completion "" virtuals)))))))
 
 (defun c++-get-class-name ()
-  (interactive)
-  (or (car (c++-get-class-name-and-template))
-      (message "could not match class")))
+  (car (c++-get-class-name-and-template)))
 
-(defun c++-get-class-name-and-template ()
-   (ignore-errors
-     (save-excursion
-       (let (name template)
-         ;; step out of the current block
-         (with-syntax-table c++-braces-table
-           (up-list)
-           (backward-list))
-         ;; TODO take care of nested classes
-         (if (looking-back
-              "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
-             (progn
-               (goto-char (match-beginning 0))
-               (setq name (match-string-no-properties 1))
-               ;; try to match the template as well
-               (when (looking-back ">[\n \t]*")
-                 (let ((end (progn (goto-char (match-beginning 0)) (point)))
-                       (beg (ignore-errors (forward-char)(backward-list)(point))))
-                   (when end
-                     (setq template (buffer-substring-no-properties (1+ beg) end))))))
-           ;; we're not in class, but in a function
-           (beginning-of-defun)
-           (when (looking-at "template +<")
-             (goto-char (1- (match-end 0)))
-             (setq template (substring (list-at-point*) 1 -1))
-             (forward-list)
-             (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
-             (setq name (match-string-no-properties 1))))
-         (cons name template)))))
+(defun c++-get-class-template ()
+  (cdr (c++-get-class-name-and-template)))
 
 (defvar c++-braces-table
   (let ((table (make-char-table 'syntax-table nil)))
     (modify-syntax-entry ?{ "(}" table)
     (modify-syntax-entry ?} "){" table)
     table))
+
+(defun c++-get-class-name-and-template ()
+  (ignore-errors
+    (save-excursion
+      (let (name template)
+        ;; step out of the current block
+        (with-syntax-table c++-braces-table
+          (up-list)
+          (backward-list))
+        ;; TODO take care of nested classes
+        (if (looking-back
+             "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
+            (progn
+              (goto-char (match-beginning 0))
+              (setq name (match-string-no-properties 1))
+              ;; try to match the template as well
+              (when (looking-back ">[\n \t]*")
+                (let ((end (progn (goto-char (match-beginning 0)) (point)))
+                      (beg (ignore-errors (forward-char)(backward-list)(point))))
+                  (when end
+                    (setq template (buffer-substring-no-properties (1+ beg) end))))))
+          ;; we're not in class, but in a function
+          (beginning-of-defun)
+          (when (looking-at "template +<")
+            (goto-char (1- (match-end 0)))
+            (setq template (substring (moo-list-at-point) 1 -1))
+            (forward-list))
+          (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
+          (setq name (match-string-no-properties 1)))
+        (cons name template)))))
+
+(defun moo-list-at-point ()
+  "Return any list at point. At least what the syntax
+thinks is a list."
+  (let ((beg (point))
+        end)
+    (forward-list)
+    (setq end (point))
+    (backward-list)
+    ;; maybe do something with beg and (point)
+    (setq beg (point))
+    (buffer-substring-no-properties beg end)))
 
 (provide 'function-args)
 ;;; function-args.el ends here
