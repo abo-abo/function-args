@@ -201,36 +201,34 @@
        (cdr tag)))))
 
 (defun moo-tag-at-point (str)
-  (let ((matches (moo-desperately-find-sname str)))
+  (let* ((matches (moo-desperately-find-sname str))
+         (class-name (c++-get-class-name))
+         ;; try to filter based on class
+         (filtered-matches
+          (filter (lambda(x) (or (not (semantic-tag-of-class-p x 'variable))
+                            (equal class-name
+                                   (save-excursion
+                                     (goto-char (moo-tag-beginning-position x))
+                                     (c++-get-class-name)))))
+                  matches)))
     (cond
       ;; fall back to semantic
-      ((null matches)
+      ((null filtered-matches)
        (save-excursion
          (search-backward str)
          (semantic-analyze-interesting-tag
           (semantic-analyze-current-context (point)))))
-      ((eq 1 (length matches))
+      ((eq 1 (length filtered-matches))
        (car matches))
-
       ((cl-every #'moo-namespacep matches)
        `(,str type
-                  (:type
-                   namespace
-                   :members
-                   (,@(apply #'append
-                            (mapcar #'moo-ttype->tmembers matches))))))
+              (:type
+               namespace
+               :members
+               (,@(apply #'append
+                         (mapcar #'moo-ttype->tmembers matches))))))
       (t
-       ;; try to filter based on class
-       (let ((class-name (c++-get-class-name)))
-         (setq matches
-               (filter (lambda(x)(equal class-name
-                                   (save-excursion
-                                     (goto-char (moo-tag-beginning-position x))
-                                     (c++-get-class-name))))
-                       matches))
-         (if (eq 1 (length matches))
-             (car matches)
-           (error "multiple definitions for %s" str)))))))
+       (error "multiple definitions for %s" str)))))
 
 ;; this is similar to stype->tag
 ;; I should refactor this
