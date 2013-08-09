@@ -206,17 +206,26 @@
           (semantic-analyze-current-context (point)))))
       ((eq 1 (length matches))
        (car matches))
-      (t
-       ;; if they're all namespaces, unite them
-       ;; (if (cl-every #'moo-namespacep matches)
-           `(,str type
+
+      ((cl-every #'moo-namespacep matches)
+       `(,str type
                   (:type
                    namespace
                    :members
                    (,@(apply #'append
-                            (mapcar #'moo-ttype->tmembers matches)))))
-         ;; (error "multiple definitions for %s" str))
-       ))))
+                            (mapcar #'moo-ttype->tmembers matches))))))
+      (t
+       ;; try to filter based on class
+       (let ((class-name (c++-get-class-name)))
+         (setq matches
+               (filter (lambda(x)(equal class-name
+                                   (save-excursion
+                                     (goto-char (moo-tag-beginning-position x))
+                                     (c++-get-class-name))))
+                       matches))
+         (if (eq 1 (length matches))
+             (car matches)
+           (error "multiple definitions for %s" str)))))))
 
 ;; this is similar to stype->tag
 ;; I should refactor this
@@ -1070,20 +1079,31 @@ Skips anything between matching <...>"
 (defun c++-get-class-name-and-template ()
    (ignore-errors
      (save-excursion
-       (let ((name (with-syntax-table c++-braces-table
-                     (up-list)
-                     (backward-list)
-                     (when (re-search-backward
-                            "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{]*?")
-                       (match-string-no-properties 1))))
-             template)
-         (when name
-           ;; try to match the template as well
-           (when (looking-back ">[\n \t]*")
-             (let ((end (progn (goto-char (match-beginning 0)) (point)))
-                   (beg (ignore-errors (forward-char)(backward-list)(point))))
-               (when end
-                 (setq template (buffer-substring-no-properties (1+ beg) end))))))
+       (let (name template)
+         ;; step out of the current block
+         (with-syntax-table c++-braces-table
+           (up-list)
+           (backward-list))
+         ;; TODO take care of nested classes
+         (if (looking-back
+              "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
+             (progn
+               (goto-char (match-beginning 0))
+               (setq name (match-string-no-properties 1))
+               ;; try to match the template as well
+               (when (looking-back ">[\n \t]*")
+                 (let ((end (progn (goto-char (match-beginning 0)) (point)))
+                       (beg (ignore-errors (forward-char)(backward-list)(point))))
+                   (when end
+                     (setq template (buffer-substring-no-properties (1+ beg) end))))))
+           ;; we're not in class, but in a function
+           (beginning-of-defun)
+           (when (looking-at "template +<")
+             (goto-char (1- (match-end 0)))
+             (setq template (substring (list-at-point*) 1 -1))
+             (forward-list)
+             (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
+             (setq name (match-string-no-properties 1))))
          (cons name template)))))
 
 (defvar c++-braces-table
