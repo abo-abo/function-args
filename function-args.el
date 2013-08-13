@@ -205,11 +205,13 @@
          (class-name (c++-get-class-name))
          ;; try to filter based on class
          (filtered-matches
-          (filter (lambda(x) (or (not (semantic-tag-of-class-p x 'variable))
-                            (equal class-name
-                                   (save-excursion
-                                     (goto-char (moo-tag-beginning-position x))
-                                     (c++-get-class-name)))))
+          (filter (lambda(x)
+                    (and (not (semantic-tag-get-attribute x :prototype))
+                         (or (not (semantic-tag-of-class-p x 'variable))
+                             (equal class-name
+                                    (save-excursion
+                                      (goto-char (moo-tag-beginning-position x))
+                                      (c++-get-class-name))))))
                   matches)))
     (cond
       ;; fall back to semantic
@@ -219,7 +221,7 @@
          (semantic-analyze-interesting-tag
           (semantic-analyze-current-context (point)))))
       ((eq 1 (length filtered-matches))
-       (car matches))
+       (car filtered-matches))
       ((cl-every #'moo-namespacep matches)
        `(,str type
               (:type
