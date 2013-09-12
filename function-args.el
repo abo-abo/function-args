@@ -1090,9 +1090,12 @@ Skips anything between matching <...>"
 
 (defun moo-virtualp (function-tag)
   (and
-   (member "virtual"
-           (semantic-tag-get-attribute
-            function-tag :typemodifiers))
+   (or
+    (member "virtual"
+            (semantic-tag-get-attribute
+             function-tag :typemodifiers))
+    (semantic-tag-get-attribute
+     function-tag :pure-virtual-flag))
    ;; don't want distructors
    (not (semantic-tag-get-attribute
          function-tag :destructor-flag))))
