@@ -229,6 +229,14 @@
                :members
                (,@(apply #'append
                          (mapcar #'moo-ttype->tmembers matches))))))
+      ((cl-every #'moo-typep matches)
+       `(,str type
+              (:members
+               (,@(apply #'append
+                         (mapcar #'moo-ttype->tmembers matches))))))
+      (t
+       (error "multiple definitions for %s" str)))))
+
 (defun moo-type-tag-at-point (str)
   "Returns tags with name STR that are types."
   (let* ((matches (moo-desperately-find-sname str))
@@ -1026,6 +1034,12 @@ WSPACE is the padding."
     (and (stringp attr)
          (string= attr "namespace"))))
 
+(defun moo-functionp (tag)
+  (semantic-tag-of-class-p tag 'function))
+
+(defun moo-typep (tag)
+  (semantic-tag-of-class-p tag 'type))
+
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
          (own-tags (moo-get-tag-by-name stag file-tags))
@@ -1081,12 +1095,6 @@ Skips anything between matching <...>"
   "Return a lambda that combines the predicates with an and"
   `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
                        predicates))))
-
-(defun moo-functionp (tag)
-  (semantic-tag-of-class-p tag 'function))
-
-(defun moo-typep (tag)
-  (semantic-tag-of-class-p tag 'type))
 
 (defun moo-virtualp (function-tag)
   (and
