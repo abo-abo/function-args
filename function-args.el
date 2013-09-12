@@ -1036,11 +1036,26 @@ WSPACE is the padding."
            (apply #'append
                   (mapcar (lambda (filename)
                             (moo-tag-put-filename-to-types
-                             (filter (lambda (tag) (string= (car tag) stag))
-                                     (semantic-file-tag-table filename))
+                             (moo-find-sname-in-tags
+                              stag
+                              (semantic-file-tag-table filename))
                              filename))
                           include-filenames))
            (list own-tags))))
+
+(defun moo-find-sname-in-tags (stag tags)
+  (let (result tag)
+    (while (setq tag (pop tags))
+      (if (string= (car tag) stag)
+          (push tag result)
+        (when (moo-namespacep tag)
+          (setq result
+                (append result
+                        (moo-find-sname-in-tags
+                         stag
+                         (semantic-tag-get-attribute tag :members)))))))
+    result))
+
 
 (defmacro fa-backward-char-skip<> (&optional arg)
   "Moves point backward until [A-Za-z_0-9] is encountered.
