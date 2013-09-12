@@ -229,6 +229,23 @@
                :members
                (,@(apply #'append
                          (mapcar #'moo-ttype->tmembers matches))))))
+(defun moo-type-tag-at-point (str)
+  "Returns tags with name STR that are types."
+  (let* ((matches (moo-desperately-find-sname str))
+         (filtered-matches
+          (filter (lambda(x)
+                    (and (not (semantic-tag-get-attribute x :prototype))
+                         (semantic-tag-of-class-p x 'type)))
+                  matches)))
+    (cond
+      ;; fall back to semantic
+      ((null filtered-matches)
+       (save-excursion
+         (search-backward str)
+         (semantic-analyze-interesting-tag
+          (semantic-analyze-current-context (point)))))
+      ((eq 1 (length filtered-matches))
+       (car filtered-matches))
       (t
        (error "multiple definitions for %s" str)))))
 
@@ -247,7 +264,7 @@
        (when (listp type-name)
          (setq type-name (car type-name)))
        (or (moo-stype->tag type-name)
-           (moo-tag-at-point type-name))))))
+           (moo-type-tag-at-point type-name))))))
 
 
 (defun moo-complete (arg)
