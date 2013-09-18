@@ -238,7 +238,6 @@
        (error "multiple definitions for %s" str)))))
 
 (defun moo-type-tag-at-point (str)
-  "Returns tags with name STR that are types."
   (let* ((matches (moo-desperately-find-sname str))
          (filtered-matches
           (filter (lambda(x)
@@ -880,17 +879,26 @@ WSPACE is the padding."
   (semantic-tag-get-attribute tag :constructor-flag))
 
 (defun moo-stype->tag (str)
-  (unwind-protect
-      (let (retval)
-        (let* ((position (point))
-               (scope (semantic-calculate-scope position)))
-          (ignore-errors
-            (setq retval
-                  (catch 'unfindable
-                    (semantic-analyze-find-tag-sequence
-                     str scope 'prefixtypes 'unfindable))))
-          ;; TODO: check (= (length retval) 1)
-          (car retval)))))
+  (or
+   (unwind-protect
+        (let (retval)
+          (let* ((position (point))
+                 (scope (semantic-calculate-scope position)))
+            (ignore-errors
+              (setq retval
+                    (catch 'unfindable
+                      (semantic-analyze-find-tag-sequence
+                       str scope 'prefixtypes 'unfindable))))
+            ;; TODO: check (= (length retval) 1)
+            (car retval))))
+   (let ((candidates (filter #'moo-typep
+                             (moo-desperately-find-sname str))))
+     (cond ((= 0 (length candidates)))
+
+           ((= 1 (length candidates))
+            (car candidates))
+
+           (t (error "`moo-stype->tag': too many candidates"))))))
 
 (defun moo-tenum->tmembers (tag)
   (let ((stag (and (semantic-tag-of-class-p tag 'type)
