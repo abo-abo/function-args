@@ -71,6 +71,13 @@
   :type 'integer
   :group 'function-args)
 
+(defcustom moo-select-method 'helm
+  "Method to select a candidate from a list of strings."
+  :type '(choice
+          (const :tag "Helm" helm)
+          (const :tag "Plain" display-completion-list))
+  :group 'function-args)
+
 (defface fa-face-hint
   '((t (:background "#fff3bc" :foreground "black")))
   "Basic hint face."
@@ -338,8 +345,9 @@
                                (semantic-analyze-current-context pos)))
                 (candidates-2 (and (featurep 'semantic/db)
                                    (semanticdb-minor-mode-p)
-                                   (semanticdb-fast-strip-find-results
-                                    (semanticdb-deep-find-tags-for-completion sym-name))))
+                                   (ignore-errors
+                                     (semanticdb-fast-strip-find-results
+                                      (semanticdb-deep-find-tags-for-completion sym-name)))))
                 (candidates
                  (append
                   candidates-1
@@ -545,6 +553,7 @@ Return non-nil if it was updated."
                  ((looking-at "]")
                   (forward-char)
                   (backward-list)
+                  (error "[]-> or []. not implemented yet")
                   ;; do something
                   )
                  ((looking-at ">")
@@ -757,7 +766,7 @@ WSPACE is the padding."
              (and template-p (concat "template " (fa-ttemplate-specifier->str template-p) " "))
              (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
              (if type-p (fa-ttype->str type-p) "?")
-             " " name
+             " " (propertize name 'face 'font-lock-function-name-face)
              "("
              (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
                         argument-conses
@@ -777,7 +786,8 @@ WSPACE is the padding."
             typemodifiers-p
             pointer-p
             type-p
-            dereference-p)
+            dereference-p
+            default-value-p)
         (while r
           (setq item (pop r))
           (case item
@@ -794,6 +804,8 @@ WSPACE is the padding."
              (setq pointer-p (pop r)))
             (:dereference
              (setq dereference-p (pop r)))
+            (:default-value
+             (message (setq default-value-p (pop r))))
             (t (error (concat "unknown token" (prin1-to-string item))))))
         (cons (concat (and constant-p "const ")
                       (fa-ttype->str type-p))
@@ -878,6 +890,7 @@ WSPACE is the padding."
 (defun moo-tag-constructor-p (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
 
+
 (defun moo-stype->tag (str)
   (or
    (unwind-protect
@@ -888,10 +901,12 @@ WSPACE is the padding."
               (setq retval
                     (catch 'unfindable
                       (semantic-analyze-find-tag-sequence
-                       str scope 'prefixtypes 'unfindable))))
+                       (list str) scope 'prefixtypes 'unfindable))))
             ;; TODO: check (= (length retval) 1)
             (car retval))))
-   (let ((candidates (filter #'moo-typep
+   (let ((candidates (filter
+                      (lambda(x)
+                        (and (moo-typep x) (semantic-tag-get-attribute x :members)))
                              (moo-desperately-find-sname str))))
      (cond ((= 0 (length candidates)))
 
@@ -936,7 +951,9 @@ WSPACE is the padding."
                     (let ((parent-name (car parent-tag)))
                       (setq parent-tag
                             (or (gethash parent-name fa-superclasses)
-                                (puthash parent-name (moo-stype->tag parent-name) fa-superclasses))))
+                                (puthash parent-name (moo-stype->tag parent-name) fa-superclasses)))
+                      (when (eq parent-tag t)
+                          (setq parent-tag)))
                     ;; don't inherit constructors
                     (cl-delete-if #'moo-tag-constructor-p
                                (moo-ttype->tmembers parent-tag)))
@@ -973,9 +990,19 @@ WSPACE is the padding."
             (unless (string= prefix "")
               (backward-kill-sexp))
             (insert tc))
-        (with-output-to-temp-buffer "*Completions*"
-          (display-completion-list
-           (mapcar #'moo-tag->str candidates))))))))
+        (moo-select-candidate (mapcar #'moo-tag->str candidates)))))))
+
+(defun moo-select-candidate (candidates)
+  (case moo-select-method
+    (helm
+     (require 'helm)
+     (helm :sources `((name . "Virtual functions")
+                      (candidates . ,candidates)
+                      (action . (lambda(candidate) (insert candidate))))
+           :buffer "*moo-propose-virtual*"))
+    (display-completion-list
+     (with-output-to-temp-buffer "*Completions*"
+       (display-completion-list candidates)))))
 
 (defun moo-tag->str (tag)
   (or (ignore-errors (fa-tfunction->fal tag t))
