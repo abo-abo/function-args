@@ -1105,26 +1105,26 @@ WSPACE is the padding."
                          (semantic-tag-get-attribute tag :members)))))))
     result))
 
-
-(defmacro fa-backward-char-skip<> (&optional arg)
+(defun fa-backward-char-skip<> (&optional arg)
   "Moves point backward until [A-Za-z_0-9] is encountered.
 Skips anything between matching <...>"
   (let ((dir (if arg -1 1))
         (char-inc (if arg ?< ?>))
         (char-dec (if arg ?> ?<)))
-    `(progn
-       (backward-char ,dir)
-       ;; TODO: look into `c-backward-<>-arglist'
-       (while (not (looking-at "[A-Za-z_0-9]"))
-         (if (eq (char-after) ,char-inc)
-             (let ((n 1)
-                   (bound (- (point) 400)))
-               (while (and (> n 0) (> (point) bound))
-                 (backward-char ,dir)
-                 (case (char-after)
-                   (,char-inc (cl-incf n))
-                   (,char-dec (cl-decf n)))))
-           (backward-char ,dir))))))
+    (backward-char dir)
+    ;; TODO: look into `c-backward-<>-arglist'
+    (while (not (looking-at "[A-Za-z_0-9]"))
+      (if (eq (char-after) char-inc)
+          (let ((n 1)
+                (bound (- (point) 400)))
+            (while (and (> n 0) (> (point) bound))
+              (backward-char dir)
+              (cond
+                ((= (char-after) char-inc)
+                 (cl-incf n))
+                ((= (char-after) char-dec)
+                 (cl-decf n)))))
+        (backward-char dir)))))
 
 (defmacro fa-and (&rest predicates)
   "Return a lambda that combines the predicates with an and"
