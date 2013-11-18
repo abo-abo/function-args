@@ -63,6 +63,8 @@ You can invoke it with `M-o` by default.
 
 Lists the virtual members of current class' parents.
 
+![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-3.png)
+
 ### `moo-propose-override`
 
 Lists all member functions of current class' parents.
