@@ -776,18 +776,18 @@ WSPACE is the padding."
 (defun fa-tvar->cons (sm)
   (let ((name (pop sm))
         (name-e (pop sm)))
-    (if (not (eq name-e 'variable))
-        (error "not a variable")
-      (let ((r (pop sm))
-            (s "")
-            item
-            reference-p
-            constant-p
-            typemodifiers-p
-            pointer-p
-            type-p
-            dereference-p
-            default-value-p)
+    (let ((r (pop sm))
+          (s "")
+          item
+          reference-p
+          constant-p
+          typemodifiers-p
+          pointer-p
+          type-p
+          dereference-p
+          default-value-p
+          function-pointer-p
+          arguments-p)
         (while r
           (setq item (pop r))
           (case item
@@ -806,6 +806,11 @@ WSPACE is the padding."
              (setq dereference-p (pop r)))
             (:default-value
              (message (setq default-value-p (pop r))))
+            ;; ——— function pointer specific —————————————————————————————————————————
+            (:function-pointer
+             (setq function-pointer-p (pop r)))
+            (:arguments
+             (setq arguments-p (pop r)))
             (t (error (concat "unknown token" (prin1-to-string item))))))
         (cons (concat (and constant-p "const ")
                       (fa-ttype->str type-p))
@@ -813,7 +818,7 @@ WSPACE is the padding."
                       (and pointer-p "*")
                       ;; pretty up std:: identifiers
                       (replace-regexp-in-string "^_+" "" name)
-                      (and dereference-p "[]")))))))
+                      (and dereference-p "[]"))))))
 
 (defun fa-ttype->str (sm)
   (if (stringp sm)
