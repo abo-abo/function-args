@@ -1154,18 +1154,37 @@ Skips anything between matching <...>"
    (not (semantic-tag-get-attribute
          function-tag :destructor-flag))))
 
-(defun moo-propose-virtual (arg)
-  (interactive "P")
-  (when arg
-    (setq fa-superclasses (make-hash-table :test 'equal)))
+(defun moo-propose (pred)
+  "Display a list of current class members that satisfy PRED."
   (let ((stype (c++-get-class-name)))
     (when stype
       (let ((ttype (moo-tag-at-point stype)))
         (when ttype
-          (let ((virtuals (filter (fa-and moo-functionp moo-virtualp)
-                                  (moo-ttype->tmembers ttype))))
-            (setq virtuals (sort virtuals (lambda (a b) (string< (car a) (car b)))))
-            (moo-handle-completion "" virtuals)))))))
+          (let ((members (filter pred
+                                 (moo-ttype->tmembers ttype))))
+            (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
+            (moo-handle-completion "" members)))))))
+
+(defun moo-propose-virtual (arg)
+  "Call `moo-propose' for virtual functions."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose (fa-and moo-functionp moo-virtualp)))
+
+(defun moo-propose-override (arg)
+  "Call `moo-propose' for all functions."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose #'moo-functionp))
+
+(defun moo-propose-variables (arg)
+  "Call `moo-propose' for all variables."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose #'moo-variablep))
 
 (defun c++-get-class-name ()
   (car (c++-get-class-name-and-template)))
