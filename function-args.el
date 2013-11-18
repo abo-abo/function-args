@@ -992,14 +992,18 @@ WSPACE is the padding."
             (insert tc))
         (moo-select-candidate (mapcar #'moo-tag->str candidates)))))))
 
-(defun moo-select-candidate (candidates)
+(defun moo-select-candidate (candidates &optional name)
+  (unless name
+    (setq name "Candidates"))
   (case moo-select-method
     (helm
      (require 'helm)
-     (helm :sources `((name . "Virtual functions")
+     (helm :sources `((name . ,name)
                       (candidates . ,candidates)
-                      (action . (lambda(candidate) (insert candidate))))
-           :buffer "*moo-propose-virtual*"))
+                      (action . (lambda(candidate)
+                                  (when (looking-back "\\w")
+                                    (backward-kill-word 1))
+                                  (insert candidate))))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
