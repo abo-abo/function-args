@@ -1154,8 +1154,10 @@ Skips anything between matching <...>"
    (not (semantic-tag-get-attribute
          function-tag :destructor-flag))))
 
-(defun moo-propose-virtual ()
-  (interactive)
+(defun moo-propose-virtual (arg)
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
   (let ((stype (c++-get-class-name)))
     (when stype
       (let ((ttype (moo-tag-at-point stype)))
