@@ -932,6 +932,12 @@ WSPACE is the padding."
      (moo-stype->tag
       (car (semantic-tag-get-attribute ttype :type)))))))
 
+(defun moo-navigate-members (tag)
+  (let ((typedef (semantic-tag-get-attribute tag :typedef)))
+    (if typedef
+        (moo-sname->tag (car typedef))
+      (semantic-tag-get-attribute tag :members))))
+
 (defun moo-ttype->tmembers (ttype)
   (apply #'append
          (cons
@@ -940,24 +946,25 @@ WSPACE is the padding."
                  (cl-delete-if (lambda (tag) (and (stringp (car tag))
                                              (or (string= (car tag) "public")
                                                  (string= (car tag) "private"))))
-                  (semantic-tag-get-attribute ttype :members))))
+                  (moo-navigate-members ttype))))
             (apply #'append
                    own-members
                    ;; members of enums join the containing type members
                    (mapcar #'moo-tenum->tmembers own-members)))
           ;; inherited
-          (mapcar (lambda (parent-tag)
-                    ;; parent-tag's only useful name is the name
-                    (let ((parent-name (car parent-tag)))
-                      (setq parent-tag
-                            (or (gethash parent-name fa-superclasses)
-                                (puthash parent-name (moo-stype->tag parent-name) fa-superclasses)))
-                      (when (eq parent-tag t)
+          (ignore-errors
+            (mapcar (lambda (parent-tag)
+                      ;; parent-tag's only useful part is the name
+                      (let ((parent-name (car parent-tag)))
+                        (setq parent-tag
+                              (or (gethash parent-name fa-superclasses)
+                                  (puthash parent-name (moo-stype->tag parent-name) fa-superclasses)))
+                        (when (eq parent-tag t)
                           (setq parent-tag)))
-                    ;; don't inherit constructors
-                    (cl-delete-if #'moo-tag-constructor-p
-                               (moo-ttype->tmembers parent-tag)))
-                  (moo-ttype->tsuperclasses ttype)))))
+                      ;; don't inherit constructors
+                      (cl-delete-if #'moo-tag-constructor-p
+                                    (moo-ttype->tmembers parent-tag)))
+                    (moo-ttype->tsuperclasses ttype))))))
 
 (defun moo-ttype->tsuperclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
