@@ -1001,8 +1001,12 @@ WSPACE is the padding."
      (helm :sources `((name . ,name)
                       (candidates . ,candidates)
                       (action . (lambda(candidate)
-                                  (when (looking-back "\\w")
-                                    (backward-kill-word 1))
+                                  (if (or (looking-back "\\(?:::\\|\\.\\|->\\)\\([A-Z_0-9a-z]+\\)")
+                                          (looking-back "^\\s-*\\([A-Z_0-9a-z]+\\)"))
+                                      (delete-region (match-beginning 1)
+                                                     (match-end 1))
+                                    (when (looking-back "\\w")
+                                      (backward-kill-word 1)))
                                   (insert candidate))))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
