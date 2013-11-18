@@ -939,19 +939,17 @@ WSPACE is the padding."
       (semantic-tag-get-attribute tag :members))))
 
 (defun moo-ttype->tmembers (ttype)
-  (apply #'append
-         (cons
-          ;; own
-          (let ((own-members
-                 (cl-delete-if (lambda (tag) (and (stringp (car tag))
-                                             (or (string= (car tag) "public")
-                                                 (string= (car tag) "private"))))
-                  (moo-navigate-members ttype))))
-            (apply #'append
-                   own-members
-                   ;; members of enums join the containing type members
-                   (mapcar #'moo-tenum->tmembers own-members)))
-          ;; inherited
+  (let* ((own-members
+          (cl-delete-if (lambda (tag) (and (stringp (car tag))
+                                      (or (string= (car tag) "public")
+                                          (string= (car tag) "private"))))
+                        (moo-navigate-members ttype)))
+         (own-members
+          (apply #'append
+                 own-members
+                 ;; members of enums join the containing type members
+                 (mapcar #'moo-tenum->tmembers own-members)))
+         (inherited-members
           (ignore-errors
             (mapcar (lambda (parent-tag)
                       ;; parent-tag's only useful part is the name
@@ -964,7 +962,9 @@ WSPACE is the padding."
                       ;; don't inherit constructors
                       (cl-delete-if #'moo-tag-constructor-p
                                     (moo-ttype->tmembers parent-tag)))
-                    (moo-ttype->tsuperclasses ttype))))))
+                    (moo-ttype->tsuperclasses ttype))))
+         (cands (apply #'append (cons own-members inherited-members))))
+    (cl-remove-duplicates cands :test #'moo-function=)))
 
 (defun moo-ttype->tsuperclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
@@ -1153,6 +1153,32 @@ Skips anything between matching <...>"
    ;; don't want distructors
    (not (semantic-tag-get-attribute
          function-tag :destructor-flag))))
+
+(defun test-with (pred x1 x2)
+  "Return (equal (PRED X1) (PRED X2))"
+  (equal (funcall pred x1)
+         (funcall pred x2)))
+
+(defun moo-variable= (v1 v2)
+  (and (moo-variablep v1)
+       (moo-variablep v2)
+       (test-with #'car v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
+
+(defun moo-function= (f1 f2)
+  (and (moo-functionp f1)
+       (moo-functionp f2)
+       (string= (car f1) (car f2))
+       (equal (semantic-tag-get-attribute f1 :typemodifiers)
+              (semantic-tag-get-attribute f2 :typemodifiers))
+       (equal (semantic-tag-get-attribute f1 :type)
+              (semantic-tag-get-attribute f2 :type))
+       (cl-every #'identity
+                 (cl-mapcar #'moo-variable=
+                            (semantic-tag-get-attribute f1 :arguments)
+                            (semantic-tag-get-attribute f2 :arguments)))))
 
 (defun moo-propose (pred)
   "Display a list of current class members that satisfy PRED."
