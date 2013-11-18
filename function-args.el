@@ -979,15 +979,11 @@ WSPACE is the padding."
     ;; TODO: add bounds to this
     (while (not (looking-back prefix))
       (forward-sexp))
-    (let ((str (caar candidates))
-          (case-fold-search nil))
+    (let ((case-fold-search nil))
       (if (re-search-backward prefix (line-beginning-position) t)
           (delete-region (match-beginning 0) (match-end 0))
         (error "moo-handle-completion failed."))
-      (insert str))
-    (when (eq (cadar candidates) 'function)
-      (insert "()")
-      (backward-char)))
+      (insert (moo-tag->str (car candidates)))))
    ;; multiple candidates with different names
    (t
     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
