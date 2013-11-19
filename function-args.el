@@ -349,11 +349,9 @@
                                      (semanticdb-fast-strip-find-results
                                       (semanticdb-deep-find-tags-for-completion sym-name)))))
                 (candidates
-                 (append
-                  candidates-1
-                  (cl-delete-duplicates
-                   candidates-2
-                   :test (lambda (t1 t2) (equal (car t1) (car t2)))))))
+                 (cl-delete-duplicates
+                  (append candidates-1 candidates-2)
+                  :test #'moo-function=)))
            (moo-handle-completion sym-name
                                   (if arg
                                       (moo-filter-tag-by-class
