@@ -988,7 +988,8 @@ WSPACE is the padding."
 (defun moo-ttype->tsuperclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
 
-(defun moo-handle-completion (prefix candidates)
+(defun moo-handle-completion (prefix candidates &optional fulltag)
+  "FULLTAG for a function means to format the declaration."
   (cond
    ((null candidates)
     (message "there is no completions, only Zuul"))
@@ -1002,7 +1003,7 @@ WSPACE is the padding."
       (if (re-search-backward prefix (line-beginning-position) t)
           (delete-region (match-beginning 0) (match-end 0))
         (error "moo-handle-completion failed."))
-      (insert (moo-tag->str (car candidates)))))
+      (insert (caar candidates))))
    ;; multiple candidates with different names
    (t
     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
@@ -1012,7 +1013,15 @@ WSPACE is the padding."
             (unless (string= prefix "")
               (backward-kill-sexp))
             (insert tc))
-        (moo-select-candidate (mapcar #'moo-tag->str candidates)))))))
+        (moo-select-candidate (mapcar (if fulltag
+                                          #'moo-tag->str
+                                        #'moo-tag->cons) candidates)))))))
+
+(defun moo-tag->cons (tag)
+  "Return for TAG a cons (STR . NAME).
+STR is the result of `moo-tag->str' on TAG,
+NAME is the TAG name."
+  (cons (moo-tag->str tag) (car tag)))
 
 (defun moo-select-candidate (candidates &optional name)
   (unless name
@@ -1211,7 +1220,7 @@ Skips anything between matching <...>"
           (let ((members (filter pred
                                  (moo-ttype->tmembers ttype))))
             (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
-            (moo-handle-completion "" members)))))))
+            (moo-handle-completion "" members t)))))))
 
 (defun moo-propose-virtual (arg)
   "Call `moo-propose' for virtual functions."
