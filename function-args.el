@@ -207,13 +207,16 @@
       (goto-char
        (cdr tag)))))
 
-(defun moo-tag-at-point (str)
+(defun moo-tag-at-point (str &optional predicate)
+  "Find a tag with name STR that's visible near point.
+Optional PREDICATE is used to improve uniqueness of returned tag."
   (let* ((matches (moo-desperately-find-sname str))
          (class-name (c++-get-class-name))
          ;; try to filter based on class
          (filtered-matches
           (filter (lambda(x)
                     (and (not (semantic-tag-get-attribute x :prototype))
+                         (if predicate (funcall predicate x) t)
                          (or (not (semantic-tag-of-class-p x 'variable))
                              (equal class-name
                                     (save-excursion
@@ -1203,7 +1206,7 @@ Skips anything between matching <...>"
   "Display a list of current class members that satisfy PRED."
   (let ((stype (c++-get-class-name)))
     (when stype
-      (let ((ttype (moo-tag-at-point stype)))
+      (let ((ttype (moo-tag-at-point stype #'moo-typep)))
         (when ttype
           (let ((members (filter pred
                                  (moo-ttype->tmembers ttype))))
