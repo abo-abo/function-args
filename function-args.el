@@ -688,90 +688,96 @@ WSPACE is the padding."
         (position (moo-tag-beginning-position sm))
         (name (pop sm))
         (name-e (pop sm)))
-    (if (not (eq name-e 'function))
-        (error "not a function")
-      (let ((r (pop sm))
-            template-p
-            type-p
-            arguments-p
-            constant-flag-p
-            prototype-flag-p
-            typemodifiers-p
-            pointer-p
-            constructor-flag-p
-            operator-flag-p
-            parent-p
-            pointer-p
-            destructor-flag-p
-            pure-virtual-flag-p
-            template-specifier-p
-            filename-p
-            throws-p
-            item)
-        (while r
-          (setq item (pop r))
-          (case item
-            (:template
-             (setq template-p (pop r)))
-            (:type
-             (setq type-p (pop r)))
-            (:arguments
-             (setq arguments-p (pop r)))
-            (:prototype-flag
-             (setq prototype-flag-p (pop r)))
-            (:constant-flag
-             (setq constant-flag-p (pop r)))
-            (:typemodifiers             ;what's this?
-             (setq typemodifiers-p (pop r)))
-            (:constructor-flag
-             (setq constructor-flag-p (pop r)))
-            (:parent
-             (setq parent-p (pop r)))
-            (:operator-flag
-             (setq operator-flag-p (pop r)))
-            (:destructor-flag
-             (setq destructor-flag-p (pop r)))
-            (:pointer
-             (setq pointer-p (pop r)))
-            (:pure-virtual-flag
-             (setq pure-virtual-flag-p (pop r)))
-            (:template-specifier
-             (setq template-specifier-p (pop r)))
-            (:throws
-             (setq throws-p (pop r)))
-            (:filename
-             (setq filename-p (pop r)))
-            (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
-        (let ((argument-conses (mapcar
-                                #'fa-tvar->cons
-                                (mapcar
-                                 (lambda (x) (if (string= (car x) "") (setcar x "")) x)
-                                 arguments-p))))
-          (if (null output-string)
-              (cons
-               ;; name and type part
-               (list (and template-p
-                          (concat "template " (fa-ttemplate-specifier->str template-p) " "))
-                     (if constructor-flag-p
-                         name
-                       (if type-p
-                           (fa-ttype->str type-p)
-                         "?"))
-                     (cons filename
-                           position))
-               ;; arguments part
-               argument-conses)
-            ;; ——— output a string instead —————————————————————————————————————————————
-            (concat
-             (and template-p (concat "template " (fa-ttemplate-specifier->str template-p) " "))
-             (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
-             (if type-p (fa-ttype->str type-p) "?")
-             " " (propertize name 'face 'font-lock-function-name-face)
-             "("
-             (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
-                        argument-conses
-                        ", ")
-             ");")))))))
+    (if (eq name-e 'type)
+        (propertize name 'face 'font-lock-type-face)
+      (if (not (eq name-e 'function))
+          (error "not a function")
+        (let ((r (pop sm))
+              template-p
+              type-p
+              arguments-p
+              constant-flag-p
+              prototype-flag-p
+              typemodifiers-p
+              pointer-p
+              constructor-flag-p
+              operator-flag-p
+              parent-p
+              pointer-p
+              destructor-flag-p
+              pure-virtual-flag-p
+              template-specifier-p
+              filename-p
+              throws-p
+              item)
+          (while r
+            (setq item (pop r))
+            (case item
+              (:template
+               (setq template-p (pop r)))
+              (:type
+               (setq type-p (pop r)))
+              (:arguments
+               (setq arguments-p (pop r)))
+              (:prototype-flag
+               (setq prototype-flag-p (pop r)))
+              (:constant-flag
+               (setq constant-flag-p (pop r)))
+              (:typemodifiers           ;what's this?
+               (setq typemodifiers-p (pop r)))
+              (:constructor-flag
+               (setq constructor-flag-p (pop r)))
+              (:parent
+               (setq parent-p (pop r)))
+              (:operator-flag
+               (setq operator-flag-p (pop r)))
+              (:destructor-flag
+               (setq destructor-flag-p (pop r)))
+              (:pointer
+               (setq pointer-p (pop r)))
+              (:pure-virtual-flag
+               (setq pure-virtual-flag-p (pop r)))
+              (:template-specifier
+               (setq template-specifier-p (pop r)))
+              (:throws
+               (setq throws-p (pop r)))
+              (:filename
+               (setq filename-p (pop r)))
+              (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
+          (let ((argument-conses (mapcar
+                                  #'fa-tvar->cons
+                                  (mapcar
+                                   (lambda (x) (if (string= (car x) "") (setcar x "")) x)
+                                   arguments-p))))
+            (if (null output-string)
+                (cons
+                 ;; name and type part
+                 (list (and template-p
+                            (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+                       (if constructor-flag-p
+                           name
+                         (if type-p
+                             (fa-ttype->str type-p)
+                           "?"))
+                       (cons filename
+                             position))
+                 ;; arguments part
+                 argument-conses)
+              ;; ——— output a string instead —————————————————————————————————————————————
+              (concat
+               (and template-p (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+               (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
+               (if constructor-flag-p
+                   ""
+                 (if type-p
+                     (fa-ttype->str type-p)
+                   "?"))
+               " " (propertize name 'face 'font-lock-function-name-face)
+               "("
+               (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
+                          argument-conses
+                          ", ")
+               ");"))))))))
 
 (defun fa-tvar->cons (sm)
   (let ((name (pop sm))
