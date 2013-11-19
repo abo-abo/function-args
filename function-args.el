@@ -280,6 +280,9 @@
        (or (moo-stype->tag type-name)
            (moo-type-tag-at-point type-name))))))
 
+(defun fa-char-upcasep (c)
+  (eq c (upcase c)))
+
 
 (defun moo-complete (arg)
   "Complete current C++ symbol at POS."
@@ -333,8 +336,12 @@
                           ;; wildcard
                           ((eq ?_ (aref mem-name 0))
                            `(lambda(x) (cl-search ,(substring mem-name 1) (downcase (car x)))))
+                          ;; case-sensitive
+                          ((fa-char-upcasep (aref mem-name 0))
+                           (lambda(x) (eq 0 (cl-search mem-name (car x)))))
+                          ;; case-insensitive
                           (t
-                           (lambda(x) (eq 0 (cl-search mem-name (downcase (car x))))))))
+                           `(lambda(x) (eq 0 (cl-search ,(downcase mem-name) (downcase (car x))))))))
                   (candidates (delete-dups
                                (filter pred tmembers))))
              (moo-handle-completion mem-name candidates))))
