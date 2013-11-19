@@ -1089,7 +1089,7 @@ WSPACE is the padding."
   (semantic-tag-of-class-p tag 'function))
 
 (defun moo-variablep (tag)
-  (semantic-tag-of-class-p tag 'function))
+  (semantic-tag-of-class-p tag 'variable))
 
 (defun moo-typep (tag)
   (semantic-tag-of-class-p tag 'type))
