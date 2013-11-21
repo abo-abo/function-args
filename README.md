@@ -90,7 +90,7 @@ I recommend to install it if you're having problems with the CEDET that comes wi
 ### Semantic refresh
 
 If you're getting a completion only sometimes under the same conditions,
-try `M-x RET semantic-force-refresh`.
+try `M-x semantic-force-refresh`.
 
 
 
