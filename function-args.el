@@ -1008,7 +1008,7 @@ WSPACE is the padding."
       (if (re-search-backward prefix (line-beginning-position) t)
           (delete-region (match-beginning 0) (match-end 0))
         (error "moo-handle-completion failed."))
-      (insert (caar candidates))))
+      (insert (funcall (if fulltag #'moo-tag->str #'car) (car candidates)))))
    ;; multiple candidates with different names
    (t
     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
