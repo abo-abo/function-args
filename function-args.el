@@ -61,6 +61,11 @@
   :group 'completion
   :prefix "fa-")
 
+(defgroup function-args-faces nil
+  "Font-lock faces for `function-args'."
+  :group 'function-args
+  :prefix "fa-")
+
 (defcustom fa-hint-position-below nil
   "Non-nil means hint will be shown below point (instead of above)."
   :type 'boolean
@@ -81,27 +86,27 @@
 (defface fa-face-hint
   '((t (:background "#fff3bc" :foreground "black")))
   "Basic hint face."
-  :group 'font-lock-highlighting-faces)
+  :group 'function-args-faces)
 
 (defface fa-face-hint-bold
   '((t (:background "#fff3bc" :bold t) ))
   "Basic hint face with bold font. Bold is used to signify the current element."
-  :group 'font-lock-highlighting-faces)
+  :group 'function-args-faces)
 
 (defface fa-face-type
   '((t (:inherit 'font-lock-type-face :background "#fff3bc") ))
   "Face for displaying types."
-  :group 'font-lock-highlighting-faces)
+  :group 'function-args-faces)
 
 (defface fa-face-type-bold
   '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t) ))
   "Face for displaying types. Bold is used to signify the current element"
-  :group 'font-lock-highlighting-faces)
+  :group 'function-args-faces)
 
 (defface fa-face-semi
   '((t (:foreground "#2a00ff" :background "#fff3bc")))
   "Face for displaying separators."
-  :group 'font-lock-highlighting-faces)
+  :group 'function-args-faces)
 
 (defconst fa-paren-open (propertize "(" 'face 'fa-face-semi)
   "String to open argument list.")
