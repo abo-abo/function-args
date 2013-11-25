@@ -1139,6 +1139,9 @@ NAME is the TAG name."
 (defun moo-includep (tag)
   (semantic-tag-of-class-p tag 'include))
 
+(defun moo-usingp (tag)
+  (semantic-tag-of-class-p tag 'using))
+
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
          (own-tags (moo-get-tag-by-name stag file-tags))
@@ -1340,7 +1343,7 @@ thinks is a list."
   "Traverse the namespace forest TAGS and return the leafs."
   (let (out tag)
     (while (setq tag (pop tags))
-      (cond ((moo-includep tag)
+      (cond ((or (moo-includep tag) (moo-usingp tag))
              ;; skip
              )
 
