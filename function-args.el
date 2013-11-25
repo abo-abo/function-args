@@ -217,85 +217,6 @@
       (goto-char
        (cdr tag)))))
 
-(defun moo-tag-at-point (str &optional predicate)
-  "Find a tag with name STR that's visible near point.
-Optional PREDICATE is used to improve uniqueness of returned tag."
-  (let* ((matches (moo-desperately-find-sname str))
-         (class-name (c++-get-class-name))
-         ;; try to filter based on class
-         (filtered-matches
-          (filter (lambda(x)
-                    (and (not (semantic-tag-get-attribute x :prototype))
-                         (if predicate (funcall predicate x) t)
-                         (or (not (semantic-tag-of-class-p x 'variable))
-                             (equal class-name
-                                    (save-excursion
-                                      (goto-char (moo-tag-beginning-position x))
-                                      (c++-get-class-name))))))
-                  matches)))
-    (cond
-      ;; fall back to semantic
-      ((null filtered-matches)
-       (save-excursion
-         (search-backward str)
-         (semantic-analyze-interesting-tag
-          (semantic-analyze-current-context (point)))))
-      ((eq 1 (length filtered-matches))
-       (car filtered-matches))
-      ((cl-every #'moo-namespacep matches)
-       `(,str type
-              (:type
-               namespace
-               :members
-               (,@(apply #'append
-                         (mapcar #'moo-ttype->tmembers matches))))))
-      ((cl-every #'moo-typep matches)
-       `(,str type
-              (:members
-               (,@(apply #'append
-                         (mapcar #'moo-ttype->tmembers matches))))))
-      (t
-       (error "multiple definitions for %s" str)))))
-
-(defun moo-type-tag-at-point (str)
-  (let* ((matches (moo-desperately-find-sname str))
-         (filtered-matches
-          (filter (lambda(x)
-                    (and (not (semantic-tag-get-attribute x :prototype))
-                         (semantic-tag-of-class-p x 'type)))
-                  matches)))
-    (cond
-      ;; fall back to semantic
-      ((null filtered-matches)
-       (save-excursion
-         (search-backward str)
-         (semantic-analyze-interesting-tag
-          (semantic-analyze-current-context (point)))))
-      ((eq 1 (length filtered-matches))
-       (car filtered-matches))
-      (t
-       (error "multiple definitions for %s" str)))))
-
-;; this is similar to stype->tag
-;; I should refactor this
-(defun moo-complete-type-member (var-tag)
-  (let ((type-name (semantic-tag-get-attribute var-tag :type)))
-    (cond
-      ;; this happens sometimes
-      ((equal type-name "class")
-       var-tag)
-      ;; this as well
-      ((or (equal type-name "namespace") (eq type-name 'namespace))
-       (moo-sname->tag (car var-tag)))
-      (t
-       (when (listp type-name)
-         (setq type-name (car type-name)))
-       (or (moo-stype->tag type-name)
-           (moo-type-tag-at-point type-name))))))
-
-(defun fa-char-upcasep (c)
-  (eq c (upcase c)))
-
 
 (defun moo-complete (arg)
   "Complete current C++ symbol at POS."
@@ -381,7 +302,119 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
         (t
          (semantic-ia-complete-symbol pos))))))
 
+(defun moo-propose-virtual (arg)
+  "Call `moo-propose' for virtual functions."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose (fa-and moo-functionp moo-virtualp)))
+
+(defun moo-propose-override (arg)
+  "Call `moo-propose' for all functions."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose #'moo-functionp))
+
+(defun moo-propose-variables (arg)
+  "Call `moo-propose' for all variables."
+  (interactive "P")
+  (when arg
+    (setq fa-superclasses (make-hash-table :test 'equal)))
+  (moo-propose #'moo-variablep))
+
+(defun moo-jump-local ()
+  "Select a tag to jump to from tags defined in current buffer."
+  (interactive)
+  (let ((tags (semantic-fetch-tags)))
+    (moo-select-candidate
+     (if (eq major-mode 'c++-mode)
+         (mapcar
+          (lambda(x)(cons x (moo-tag->str x)))
+          (moo-flatten-namepaces tags))
+       tags)
+     #'moo-action-jump)))
+
 ;; ——— Internals —————————————————————————————————————————————————————————————————————
+(defun moo-tag-at-point (str &optional predicate)
+  "Find a tag with name STR that's visible near point.
+Optional PREDICATE is used to improve uniqueness of returned tag."
+  (let* ((matches (moo-desperately-find-sname str))
+         (class-name (c++-get-class-name))
+         ;; try to filter based on class
+         (filtered-matches
+          (filter (lambda(x)
+                    (and (not (semantic-tag-get-attribute x :prototype))
+                         (if predicate (funcall predicate x) t)
+                         (or (not (semantic-tag-of-class-p x 'variable))
+                             (equal class-name
+                                    (save-excursion
+                                      (goto-char (moo-tag-beginning-position x))
+                                      (c++-get-class-name))))))
+                  matches)))
+    (cond
+      ;; fall back to semantic
+      ((null filtered-matches)
+       (save-excursion
+         (search-backward str)
+         (semantic-analyze-interesting-tag
+          (semantic-analyze-current-context (point)))))
+      ((eq 1 (length filtered-matches))
+       (car filtered-matches))
+      ((cl-every #'moo-namespacep matches)
+       `(,str type
+              (:type
+               namespace
+               :members
+               (,@(apply #'append
+                         (mapcar #'moo-ttype->tmembers matches))))))
+      ((cl-every #'moo-typep matches)
+       `(,str type
+              (:members
+               (,@(apply #'append
+                         (mapcar #'moo-ttype->tmembers matches))))))
+      (t
+       (error "multiple definitions for %s" str)))))
+
+(defun moo-type-tag-at-point (str)
+  (let* ((matches (moo-desperately-find-sname str))
+         (filtered-matches
+          (filter (lambda(x)
+                    (and (not (semantic-tag-get-attribute x :prototype))
+                         (semantic-tag-of-class-p x 'type)))
+                  matches)))
+    (cond
+      ;; fall back to semantic
+      ((null filtered-matches)
+       (save-excursion
+         (search-backward str)
+         (semantic-analyze-interesting-tag
+          (semantic-analyze-current-context (point)))))
+      ((eq 1 (length filtered-matches))
+       (car filtered-matches))
+      (t
+       (error "multiple definitions for %s" str)))))
+
+;; this is similar to stype->tag
+;; I should refactor this
+(defun moo-complete-type-member (var-tag)
+  (let ((type-name (semantic-tag-get-attribute var-tag :type)))
+    (cond
+      ;; this happens sometimes
+      ((equal type-name "class")
+       var-tag)
+      ;; this as well
+      ((or (equal type-name "namespace") (eq type-name 'namespace))
+       (moo-sname->tag (car var-tag)))
+      (t
+       (when (listp type-name)
+         (setq type-name (car type-name)))
+       (or (moo-stype->tag type-name)
+           (moo-type-tag-at-point type-name))))))
+
+(defun fa-char-upcasep (c)
+  (eq c (upcase c)))
+
 (defun fa-do-show ()
   "Show function arguments hint."
   (save-excursion
@@ -406,7 +439,6 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
       (overlay-put fa-overlay 'after-string ""))))
 
 (defun fa-start-tracking ()
-  (interactive)
   (let ((beg (save-excursion (re-search-backward "(" nil t) (point)))
         (end (save-excursion (re-search-forward ")" nil t) (- (point) 1))))
     (setq fa-beg-pos beg)
@@ -1258,27 +1290,6 @@ Skips anything between matching <...>"
             (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
             (moo-handle-completion "" members #'moo-tag->str)))))))
 
-(defun moo-propose-virtual (arg)
-  "Call `moo-propose' for virtual functions."
-  (interactive "P")
-  (when arg
-    (setq fa-superclasses (make-hash-table :test 'equal)))
-  (moo-propose (fa-and moo-functionp moo-virtualp)))
-
-(defun moo-propose-override (arg)
-  "Call `moo-propose' for all functions."
-  (interactive "P")
-  (when arg
-    (setq fa-superclasses (make-hash-table :test 'equal)))
-  (moo-propose #'moo-functionp))
-
-(defun moo-propose-variables (arg)
-  "Call `moo-propose' for all variables."
-  (interactive "P")
-  (when arg
-    (setq fa-superclasses (make-hash-table :test 'equal)))
-  (moo-propose #'moo-variablep))
-
 (defun c++-get-class-name ()
   (car (c++-get-class-name-and-template)))
 
@@ -1332,18 +1343,6 @@ thinks is a list."
     ;; maybe do something with beg and (point)
     (setq beg (point))
     (buffer-substring-no-properties beg end)))
-
-(defun moo-jump-local ()
-  "Select a tag to jump to from tags defined in current buffer."
-  (interactive)
-  (let ((tags (semantic-fetch-tags)))
-    (moo-select-candidate
-     (if (eq major-mode 'c++-mode)
-         (mapcar
-          (lambda(x)(cons x (moo-tag->str x)))
-          (moo-flatten-namepaces tags))
-       tags)
-     #'moo-action-jump)))
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
