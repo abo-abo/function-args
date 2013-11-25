@@ -354,8 +354,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                           ;; case-insensitive
                           (t
                            `(lambda(x) (eq 0 (cl-search ,(downcase mem-name) (downcase (car x))))))))
-                  (candidates (delete-dups
-                               (filter pred tmembers))))
+                  (candidates (cl-delete-duplicates
+                               (filter pred tmembers)
+                               :test #'moo-tag=)))
              (moo-handle-completion mem-name candidates))))
         ;; ———  ————————————————————————————————————————————————————————————————————————
         ((= (length symbol) 1)
@@ -370,7 +371,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                 (candidates
                  (cl-delete-duplicates
                   (append candidates-1 candidates-2)
-                  :test #'moo-function=)))
+                  :test #'moo-tag=)))
            (moo-handle-completion sym-name
                                   (if arg
                                       (moo-filter-tag-by-class 'variable candidates)
@@ -1222,6 +1223,14 @@ Skips anything between matching <...>"
                  (cl-mapcar #'moo-variable=
                             (semantic-tag-get-attribute f1 :arguments)
                             (semantic-tag-get-attribute f2 :arguments)))))
+
+(defun moo-tag= (x1 x2)
+  (cond ((moo-functionp x1)
+         (moo-function= x1 x2))
+        ((moo-variablep x1)
+         (moo-variable= x1 x2))
+        (t
+         (equal (car x1) (car x2)))))
 
 (defun moo-propose (pred)
   "Display a list of current class members that satisfy PRED."
