@@ -994,20 +994,27 @@ WSPACE is the padding."
 
 (defun moo-ttype->tsuperclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
+
+(defun erase-string (str)
+  "Ensure `looking-back' STR and erase it.
+`case-fold-search' is set to nil."
+  (let ((case-fold-search nil))
+    (if (looking-back str)
+        (delete-region (match-beginning 0) (match-end 0))
+      (error "Can't erase %s." str))))
 
-(defun moo-handle-completion (prefix candidates &optional fulltag)
-  "FULLTAG for a function means to format the declaration."
+(defun moo-handle-completion (prefix candidates &optional formatter)
+  "Select tag that starts with PREFIX from CANDIDATES.
+FORMATTER is used to convert tag to string.
+The default FORMATTER is `moo-tag->cons'."
   (cond
    ((null candidates)
     (message "there is no completions, only Zuul"))
    ;; either one candidate or multiple with same name:
    ((or (= 1 (length candidates))
         (cl-reduce (lambda (x1 x2) (and x1 (string= (car x1) (car x2)) x1)) candidates))
-    (let ((case-fold-search nil))
-      (if (re-search-backward prefix (line-beginning-position) t)
-          (delete-region (match-beginning 0) (match-end 0))
-        (error "moo-handle-completion failed."))
-      (insert (funcall (if fulltag #'moo-tag->str #'car) (car candidates)))))
+    (erase-string prefix)
+    (insert (funcall (or formatter #'car) (car candidates))))
    ;; multiple candidates with different names
    (t
     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
@@ -1017,9 +1024,10 @@ WSPACE is the padding."
             (unless (string= prefix "")
               (backward-kill-sexp))
             (insert tc))
-        (moo-select-candidate (mapcar (if fulltag
-                                          #'moo-tag->str
-                                        #'moo-tag->cons) candidates)))))))
+        (moo-select-candidate
+         (mapcar (or formatter #'moo-tag->str)
+                 candidates)
+         (lambda(x)(erase-string prefix) (moo-action-insert x))))))))
 
 (defun moo-tag->cons (tag)
   "Return for TAG a cons (STR . NAME).
@@ -1027,25 +1035,31 @@ STR is the result of `moo-tag->str' on TAG,
 NAME is the TAG name."
   (cons (moo-tag->str tag) (car tag)))
 
-(defun moo-select-candidate (candidates &optional name)
+(defun moo-select-candidate (candidates action &optional name)
   (unless name
     (setq name "Candidates"))
   (case moo-select-method
     (helm
      (require 'helm)
      (helm :sources `((name . ,name)
-                      (candidates . ,candidates)
-                      (action . (lambda(candidate)
-                                  (if (or (looking-back "\\(?:::\\|\\.\\|->\\)\\([A-Z_0-9a-z]+\\)")
-                                          (looking-back "^\\s-*\\([A-Z_0-9a-z]+\\)"))
-                                      (delete-region (match-beginning 1)
-                                                     (match-end 1))
-                                    (when (looking-back "\\w")
-                                      (backward-kill-word 1)))
-                                  (insert candidate))))))
+                      (candidates . ,(mapcar
+                                      (lambda(x)
+                                        (if (listp x)
+                                            (cons (car x) x)
+                                          x)) candidates))
+                      (action . ,action))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
+
+(defun moo-action-insert (candidate)
+  (if (or (looking-back "\\(?:::\\|\\.\\|->\\)\\([A-Z_0-9a-z]+\\)")
+          (looking-back "^\\s-*\\([A-Z_0-9a-z]+\\)"))
+      (delete-region (match-beginning 1)
+                     (match-end 1))
+    (when (looking-back "\\w")
+      (backward-kill-word 1)))
+  (insert candidate))
 
 (defun moo-tag->str (tag)
   (or (ignore-errors (fa-tfunction->fal tag t))
@@ -1224,7 +1238,7 @@ Skips anything between matching <...>"
           (let ((members (filter pred
                                  (moo-ttype->tmembers ttype))))
             (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
-            (moo-handle-completion "" members t)))))))
+            (moo-handle-completion "" members #'moo-tag->str)))))))
 
 (defun moo-propose-virtual (arg)
   "Call `moo-propose' for virtual functions."
