@@ -1347,8 +1347,8 @@ thinks is a list."
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
-  (let (out tag)
-    (while (setq tag (pop tags))
+  (let (out)
+    (dolist (tag tags)
       (cond ((or (moo-includep tag) (moo-usingp tag))
              ;; skip
              )
@@ -1359,7 +1359,7 @@ thinks is a list."
                    (append out (moo-flatten-namepaces
                                 (semantic-tag-get-attribute tag :members)))))
             (t (push tag out))))
-    out))
+    (nreverse out)))
 
 (provide 'function-args)
 ;;; function-args.el ends here
