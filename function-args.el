@@ -190,7 +190,7 @@
      (fa-update-arg)
      (fa-do-show)))
 
-(defun fa-abort (&optional msg)
+(defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
   (interactive)
   (if (overlayp fa-overlay)
@@ -778,10 +778,7 @@ Return non-nil if it was updated."
            (setq fa-arg 0)
            nil)
           (t
-           (fa-abort
-            (concat
-             "bad semantic-ctxt-current-argument: "
-             (prin1-to-string argn)))))))
+           (fa-abort)))))
 
 (defun fa-after-change (beg end len)
   (let ((info (format "b=%d, e=%d l=%d; fb=%d, fe=%d, point= %d" beg end len fa-beg-pos fa-end-pos (point))))
