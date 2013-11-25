@@ -1013,21 +1013,19 @@ The default FORMATTER is `moo-tag->cons'."
    ;; either one candidate or multiple with same name:
    ((or (= 1 (length candidates))
         (cl-reduce (lambda (x1 x2) (and x1 (string= (car x1) (car x2)) x1)) candidates))
-    (erase-string prefix)
-    (insert (funcall (or formatter #'car) (car candidates))))
+    (moo-action-insert
+     (funcall (or formatter #'car) (car candidates))
+     prefix))
    ;; multiple candidates with different names
    (t
     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
            (tc (try-completion (or prefix "") candidates)))
       (if (and (stringp tc) (not (string= tc (or prefix ""))))
-          (progn
-            (unless (string= prefix "")
-              (backward-kill-sexp))
-            (insert tc))
+          (moo-action-insert tc prefix)
         (moo-select-candidate
-         (mapcar (or formatter #'moo-tag->str)
+         (mapcar (or formatter #'moo-tag->cons)
                  candidates)
-         (lambda(x)(erase-string prefix) (moo-action-insert x))))))))
+         (lambda(x)(moo-action-insert x prefix))))))))
 
 (defun moo-tag->cons (tag)
   "Return for TAG a cons (STR . NAME).
@@ -1044,7 +1042,7 @@ NAME is the TAG name."
      (helm :sources `((name . ,name)
                       (candidates . ,(mapcar
                                       (lambda(x)
-                                        (if (listp x)
+                                        (if (and (listp x) (listp (cdr x)))
                                             (cons (car x) x)
                                           x)) candidates))
                       (action . ,action))))
@@ -1052,13 +1050,9 @@ NAME is the TAG name."
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
 
-(defun moo-action-insert (candidate)
-  (if (or (looking-back "\\(?:::\\|\\.\\|->\\)\\([A-Z_0-9a-z]+\\)")
-          (looking-back "^\\s-*\\([A-Z_0-9a-z]+\\)"))
-      (delete-region (match-beginning 1)
-                     (match-end 1))
-    (when (looking-back "\\w")
-      (backward-kill-word 1)))
+(defun moo-action-insert (candidate &optional prefix)
+  (when prefix
+    (erase-string prefix))
   (insert candidate))
 
 (defun moo-tag->str (tag)
