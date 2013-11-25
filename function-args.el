@@ -373,9 +373,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   :test #'moo-function=)))
            (moo-handle-completion sym-name
                                   (if arg
-                                      (moo-filter-tag-by-class
-                                       'variable
-                                       candidates)
+                                      (moo-filter-tag-by-class 'variable candidates)
                                     candidates))))
         ;; ———  ———————————————————————————————————————————————————————————————————————
         (t
@@ -1005,9 +1003,6 @@ WSPACE is the padding."
    ;; either one candidate or multiple with same name:
    ((or (= 1 (length candidates))
         (cl-reduce (lambda (x1 x2) (and x1 (string= (car x1) (car x2)) x1)) candidates))
-    ;; TODO: add bounds to this
-    (while (not (looking-back prefix))
-      (forward-sexp))
     (let ((case-fold-search nil))
       (if (re-search-backward prefix (line-beginning-position) t)
           (delete-region (match-beginning 0) (match-end 0))
