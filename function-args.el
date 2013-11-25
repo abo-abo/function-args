@@ -1340,8 +1340,16 @@ thinks is a list."
   "Traverse the namespace forest TAGS and return the leafs."
   (let (out tag)
     (while (setq tag (pop tags))
-      (unless (moo-includep tag)
-        (push tag out)))
+      (cond ((moo-includep tag)
+             ;; skip
+             )
+
+            ((moo-namespacep tag)
+             (push tag out)
+             (setq out
+                   (append out (moo-flatten-namepaces
+                                (semantic-tag-get-attribute tag :members)))))
+            (t (push tag out))))
     out))
 
 (provide 'function-args)
