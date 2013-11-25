@@ -32,6 +32,7 @@
 ;;   methods that the current class can override.
 ;; * `moo-propose-override' -- similar to `moo-propose-virtual', but lists all
 ;;   inherited methods instead.
+;; * `moo-jump-local' -- jump to a tag defined in current buffer.
 
 
 (require 'cl-lib)

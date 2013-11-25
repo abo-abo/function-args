@@ -71,6 +71,11 @@ Lists all member functions of current class' parents.
 
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-2.png)
 
+### `moo-jump-local`
+
+Offers to jump to any tag in current buffer.
+![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-4.png)
+
 # Bugs
 
 ### Reporting
