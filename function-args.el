@@ -1278,29 +1278,35 @@ This includes the constructors of types with name STR."
                           include-filenames))
            (list own-tags))))
 
+(defun moo-namespace-reduce (func tags)
+  "Traverse the forest TAGS, reducing with two-argument function FUNC."
+  (cl-labels ((namespace-reduce
+               (func tags out)
+               (dolist (tag tags)
+                 (cond ((or (moo-includep tag) (moo-usingp tag))
+                        ;; skip
+                        )
+
+                       ((moo-namespacep tag)
+                        (setq out
+                              (namespace-reduce
+                                  func
+                                  (semantic-tag-get-attribute tag :members)
+                                  (funcall func out tag))))
+
+                       (t (setq out (funcall func out tag)))))
+               out))
+    (nreverse (namespace-reduce func tags nil))))
+
 (defun moo-find-sname-in-tags (stag tags)
   "Find tags named STAG in forest TAGS."
-  (moo-filter-tag-by-name
-   stag
-   (moo-flatten-namepaces tags)))
+  (moo-namespace-reduce
+   (lambda(x y) (if (string= (car y) stag) (push y x) x))
+   tags))
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
-  (let (out)
-    (dolist (tag tags)
-      (cond ((or (moo-includep tag) (moo-usingp tag))
-             ;; skip
-             )
-
-            ((moo-namespacep tag)
-             (setq out
-                   (nconc
-                    (nreverse (moo-flatten-namepaces
-                               (semantic-tag-get-attribute tag :members)))
-                    (list tag)
-                    out)))
-            (t (push tag out))))
-    (nreverse out)))
+  (moo-namespace-reduce (lambda(x y) (push y x)) tags))
 
 (defun c++-get-class-name ()
   (car (c++-get-class-name-and-template)))
