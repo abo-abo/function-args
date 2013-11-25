@@ -4,7 +4,7 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
-;; Version: 0.3
+;; Version: 0.4
 
 ;; This file is not part of GNU Emacs
 
@@ -422,23 +422,23 @@
 
 (defun moo-tags-pos= (tag1 tag2)
   "Return t if positions of TAG1 and TAG2 are equal."
-  (and (equal (moo-tag-beginning-position tag1)
-              (moo-tag-beginning-position tag2))
-       (let ((fname1 (moo-tag-get-filename tag1))
-             (fname2 (moo-tag-get-filename tag2)))
+  (and (equal (moo-tget-beginning-position tag1)
+              (moo-tget-beginning-position tag2))
+       (let ((fname1 (moo-tget-filename tag1))
+             (fname2 (moo-tget-filename tag2)))
          ;; normally all tags should have fname, but some don't
          (or (null fname1)
              (null fname2)
              (equal fname1 fname2)))))
 
 ;; ——— Tag getters ———————————————————————————————————————————————————————————————————
-(defun moo-tag-get-filename (tag)
+(defun moo-tget-filename (tag)
   (or (semantic--tag-get-property tag :filename)
       (and (overlayp (car (last tag)))
            (buffer-file-name
             (overlay-buffer (car (last tag)))))))
 
-(defun moo-tag-beginning-position (tag)
+(defun moo-tget-beginning-position (tag)
   (let ((x (car (last tag))))
     (cond ((overlayp x)
            (overlay-start x))
@@ -446,7 +446,7 @@
            (aref x 0))
           (t 0))))
 
-(defun moo-tag-end-position (tag)
+(defun moo-tget-end-position (tag)
   (let ((x (car (last tag))))
     (cond ((overlayp x)
            (overlay-end x))
@@ -454,10 +454,10 @@
            (aref x 1))
           (t 0))))
 
-(defun moo-get-constructors (type)
+(defun moo-tget-constructors (type)
   (ignore-errors
   (setq type (moo-dereference-typedef type))
-  (let ((enump (moo-tenum->tmembers type)))
+  (let ((enump (moo-tget-enum-members type)))
     (cond
      ;; enum
      (enump
@@ -484,26 +484,26 @@
       (filter #'moo-tag-constructor-p
               (moo-get-member-functions type)))))))
 
-(defun moo-tenum->tmembers (tag)
+(defun moo-tget-enum-members (tag)
   (let ((stag (and (semantic-tag-of-class-p tag 'type)
                    (semantic-tag-get-attribute tag :type))))
     (and (stringp stag)
          (string= stag "enum")
          (semantic-tag-get-attribute tag :members))))
 
-(defun moo-ttype->tsuperclasses (ttype)
+(defun moo-tget-superclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
 
 ;; ——— Tag setters ———————————————————————————————————————————————————————————————————
-(defun moo-tag-put-filename (tag filename)
+(defun moo-tput-filename (tag filename)
   (semantic--tag-put-property tag :filename filename))
 
-(defun moo-tag-put-filename-to-types (types-list filename)
+(defun moo-tput-filename-to-types (types-list filename)
   (mapcar
    (lambda(type)
      (semantic-tag-put-attribute
       type :members
-      (mapcar (lambda(tag) (moo-tag-put-filename tag filename))
+      (mapcar (lambda(tag) (moo-tput-filename tag filename))
               (semantic-tag-get-attribute type :members))))
    types-list))
 
@@ -556,8 +556,8 @@ WSPACE is the padding."
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
 (defun fa-tfunction->fal (sm &optional output-string)
-  (let ((filename (moo-tag-get-filename sm))
-        (position (moo-tag-beginning-position sm))
+  (let ((filename (moo-tget-filename sm))
+        (position (moo-tget-beginning-position sm))
         (name (pop sm))
         (name-e (pop sm)))
     (if (eq name-e 'type)
@@ -910,7 +910,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                          (or (not (semantic-tag-of-class-p x 'variable))
                              (equal class-name
                                     (save-excursion
-                                      (goto-char (moo-tag-beginning-position x))
+                                      (goto-char (moo-tget-beginning-position x))
                                       (c++-get-class-name))))))
                   matches)))
     (cond
@@ -990,7 +990,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
               ;; try a class temp initialization
               ((= 0 (length function))
                (fa-backward-char-skip<>)
-               (moo-get-constructors (moo-ctxt-type)))
+               (moo-tget-constructors (moo-ctxt-type)))
               ;; semantic gave just a list with one string - a variable name
               ((= 1 (length function))
                (search-backward (car function))
@@ -999,33 +999,33 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   ;; happens sometimes
                   ((stringp ctxt-type)
                    (if (looking-back "\\()[ \n\t]*:[^;()]*\\)\\|,[^;()]*")
-                       (moo-get-constructors (moo-sname->tag (car function)))
+                       (moo-tget-constructors (moo-sname->tag (car function)))
                      (fa-backward-char-skip<>)
-                     (moo-get-constructors (moo-ctxt-type))))
+                     (moo-tget-constructors (moo-ctxt-type))))
                   ((and (semantic-tag-p ctxt-type)
                    (cond
                     ;; variable init inside constructor
                     ((and (semantic-tag-of-class-p ctxt-type 'variable)
                                (looking-back ":[^;]*"))
-                         (moo-get-constructors (moo-sname->tag (car function))))
+                         (moo-tget-constructors (moo-sname->tag (car function))))
                     ;; parent class init inside constructor
                     ;; or constructor as part of expression
                     ((semantic-tag-of-class-p ctxt-type 'type)
-                     (or (moo-get-constructors ctxt-type)
-                         (moo-get-constructors
+                     (or (moo-tget-constructors ctxt-type)
+                         (moo-tget-constructors
                           (moo-tvar->ttype (car (moo-desperately-find-sname (car function)))))
-                         (moo-get-constructors
+                         (moo-tget-constructors
                           (moo-tag-at-point (car ctxt-type)))))
                     ;; global function call
                     ((semantic-tag-of-class-p ctxt-type 'function)
                      (let ((prototype-flag-p
                             (semantic-tag-get-attribute ctxt-type :prototype-flag))
-                           (tag-end (moo-tag-end-position ctxt-type)))
+                           (tag-end (moo-tget-end-position ctxt-type)))
                        (if (and prototype-flag-p
                                (and tag-end (< (point) tag-end)))
                            (or (progn
                                  (fa-backward-char-skip<>)
-                                 (moo-get-constructors (moo-ctxt-type)))
+                                 (moo-tget-constructors (moo-ctxt-type)))
                                (list ctxt-type))
                          ;; should remove duplicates here
                          (append (list ctxt-type)
@@ -1039,7 +1039,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   (t
                    (fa-backward-char-skip<>)
                    (let* ((ctxt-type (moo-ctxt-type)))
-                     (moo-get-constructors (moo-dereference-typedef ctxt-type)))))))
+                     (moo-tget-constructors (moo-dereference-typedef ctxt-type)))))))
               ((= 2 (length function))
                (re-search-backward ".\\(?:\\.\\|->\\|::\\)")
                (cond
@@ -1099,7 +1099,7 @@ Reduce them to functions only"
   (cond ((semantic-tag-of-class-p tag 'function)
          (list tag))
         ((semantic-tag-of-class-p tag 'type)
-         (moo-get-constructors
+         (moo-tget-constructors
           ;; (moo-dereference-typedef tag scope
           tag))
         ((semantic-tag-of-class-p tag 'variable)
@@ -1111,8 +1111,8 @@ Reduce them to functions only"
 This includes the constructors of types with name STR."
   (let (
         ;; TODO: this fails for namespaces such as std::
-        (filename (moo-tag-get-filename ttype)))
-    (mapcar (lambda (tag) (moo-tag-put-filename tag filename))
+        (filename (moo-tget-filename ttype)))
+    (mapcar (lambda (tag) (moo-tput-filename tag filename))
             (let ((candidates (moo-filter-tag-by-name
                                str
                                (moo-ttype->tmembers ttype))))
@@ -1120,7 +1120,7 @@ This includes the constructors of types with name STR."
                (moo-filter-tag-by-class 'function candidates)
                (apply #'append
                       (mapcar
-                       #'moo-get-constructors
+                       #'moo-tget-constructors
                        (moo-filter-tag-by-class 'type candidates))))))))
 
 (defun moo-filter-tag-by-name (sname members)
@@ -1199,7 +1199,7 @@ This includes the constructors of types with name STR."
           (apply #'append
                  own-members
                  ;; members of enums join the containing type members
-                 (mapcar #'moo-tenum->tmembers own-members)))
+                 (mapcar #'moo-tget-enum-members own-members)))
          (inherited-members
           (ignore-errors
             (mapcar (lambda (parent-tag)
@@ -1213,7 +1213,7 @@ This includes the constructors of types with name STR."
                       ;; don't inherit constructors
                       (cl-delete-if #'moo-tag-constructor-p
                                     (moo-ttype->tmembers parent-tag)))
-                    (moo-ttype->tsuperclasses ttype))))
+                    (moo-tget-superclasses ttype))))
          (cands (apply #'append (cons own-members inherited-members))))
     (cl-remove-duplicates cands :test #'moo-function=)))
 
@@ -1273,7 +1273,7 @@ This includes the constructors of types with name STR."
     (apply #'append
            (apply #'append
                   (mapcar (lambda (filename)
-                            (moo-tag-put-filename-to-types
+                            (moo-tput-filename-to-types
                              (moo-find-sname-in-tags
                               stag
                               (semantic-file-tag-table filename))
