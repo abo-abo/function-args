@@ -1282,17 +1282,28 @@ This includes the constructors of types with name STR."
            (list own-tags))))
 
 (defun moo-find-sname-in-tags (stag tags)
-  (let (result tag)
-    (while (setq tag (pop tags))
-      (if (string= (car tag) stag)
-          (push tag result)
-        (when (moo-namespacep tag)
-          (setq result
-                (append result
-                        (moo-find-sname-in-tags
-                         stag
-                         (semantic-tag-get-attribute tag :members)))))))
-    result))
+  "Find tags named STAG in forest TAGS."
+  (moo-filter-tag-by-name
+   stag
+   (moo-flatten-namepaces tags)))
+
+(defun moo-flatten-namepaces (tags)
+  "Traverse the namespace forest TAGS and return the leafs."
+  (let (out)
+    (dolist (tag tags)
+      (cond ((or (moo-includep tag) (moo-usingp tag))
+             ;; skip
+             )
+
+            ((moo-namespacep tag)
+             (setq out
+                   (nconc
+                    (nreverse (moo-flatten-namepaces
+                               (semantic-tag-get-attribute tag :members)))
+                    (list tag)
+                    out)))
+            (t (push tag out))))
+    (nreverse out)))
 
 (defun c++-get-class-name ()
   (car (c++-get-class-name-and-template)))
@@ -1347,24 +1358,6 @@ thinks is a list."
     ;; maybe do something with beg and (point)
     (setq beg (point))
     (buffer-substring-no-properties beg end)))
-
-(defun moo-flatten-namepaces (tags)
-  "Traverse the namespace forest TAGS and return the leafs."
-  (let (out)
-    (dolist (tag tags)
-      (cond ((or (moo-includep tag) (moo-usingp tag))
-             ;; skip
-             )
-
-            ((moo-namespacep tag)
-             (setq out
-                   (nconc
-                    (nreverse (moo-flatten-namepaces
-                               (semantic-tag-get-attribute tag :members)))
-                    (list tag)
-                    out)))
-            (t (push tag out))))
-    (nreverse out)))
 
 (provide 'function-args)
 ;;; function-args.el ends here
