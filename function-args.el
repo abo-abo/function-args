@@ -335,7 +335,101 @@
        tags)
      #'moo-action-jump)))
 
+;; ——— Predicates ————————————————————————————————————————————————————————————————————
+(defmacro fa-and (&rest predicates)
+  "Return a lambda that combines the predicates with an and"
+  `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
+                       predicates))))
+
+(defun fa-char-upcasep (c)
+  (eq c (upcase c)))
+
+(defun moo-virtualp (function-tag)
+  (and
+   (or
+    (member "virtual"
+            (semantic-tag-get-attribute
+             function-tag :typemodifiers))
+    (semantic-tag-get-attribute
+     function-tag :pure-virtual-flag))
+   ;; don't want distructors
+   (not (semantic-tag-get-attribute
+         function-tag :destructor-flag))))
+
+(defun moo-typedefp (tag)
+  (semantic-tag-get-attribute tag :typedef))
+
+(defun moo-namespacep (tag)
+  (let ((attr (semantic-tag-get-attribute tag :type)))
+    (and (stringp attr)
+         (string= attr "namespace"))))
+
+(defun moo-functionp (tag)
+  (semantic-tag-of-class-p tag 'function))
+
+(defun moo-variablep (tag)
+  (semantic-tag-of-class-p tag 'variable))
+
+(defun moo-typep (tag)
+  (semantic-tag-of-class-p tag 'type))
+
+(defun moo-includep (tag)
+  (semantic-tag-of-class-p tag 'include))
+
+(defun moo-usingp (tag)
+  (semantic-tag-of-class-p tag 'using))
+
+;; ——— Comparers —————————————————————————————————————————————————————————————————————
+(defun test-with (pred x1 x2)
+  "Return (equal (PRED X1) (PRED X2))"
+  (equal (funcall pred x1)
+         (funcall pred x2)))
+
+(defun moo-variable= (v1 v2)
+  "Return t if variable tags V1 and V2 are equivalent."
+  (and (moo-variablep v1)
+       (moo-variablep v2)
+       (test-with #'car v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
+       (test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
+
+(defun moo-function= (f1 f2)
+  "Return t if function tags F1 and F2 are equivalent."
+  (and (moo-functionp f1)
+       (moo-functionp f2)
+       (string= (car f1) (car f2))
+       (equal (semantic-tag-get-attribute f1 :typemodifiers)
+              (semantic-tag-get-attribute f2 :typemodifiers))
+       (equal (semantic-tag-get-attribute f1 :type)
+              (semantic-tag-get-attribute f2 :type))
+       (cl-every #'identity
+                 (cl-mapcar #'moo-variable=
+                            (semantic-tag-get-attribute f1 :arguments)
+                            (semantic-tag-get-attribute f2 :arguments)))))
+
+(defun moo-tag= (x1 x2)
+  "Return t if tags X1 and X2 are equivalent."
+  (cond ((moo-functionp x1)
+         (moo-function= x1 x2))
+        ((moo-variablep x1)
+         (moo-variable= x1 x2))
+        (t
+         (equal (car x1) (car x2)))))
+
+(defun moo-tags-pos= (tag1 tag2)
+  "Return t if positions of TAG1 and TAG2 are equal."
+  (and (equal (moo-tag-beginning-position tag1)
+              (moo-tag-beginning-position tag2))
+       (let ((fname1 (moo-tag-get-filename tag1))
+             (fname2 (moo-tag-get-filename tag2)))
+         ;; normally all tags should have fname, but some don't
+         (or (null fname1)
+             (null fname2)
+             (equal fname1 fname2)))))
 ;; ——— Internals —————————————————————————————————————————————————————————————————————
+(defalias 'filter 'cl-remove-if-not)
+
 (defun moo-tag-at-point (str &optional predicate)
   "Find a tag with name STR that's visible near point.
 Optional PREDICATE is used to improve uniqueness of returned tag."
@@ -411,9 +505,6 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
          (setq type-name (car type-name)))
        (or (moo-stype->tag type-name)
            (moo-type-tag-at-point type-name))))))
-
-(defun fa-char-upcasep (c)
-  (eq c (upcase c)))
 
 (defun fa-do-show ()
   "Show function arguments hint."
@@ -506,16 +597,6 @@ Return non-nil if it was updated."
           ((arrayp x)
            (aref x 1))
           (t 0))))
-
-(defun moo-tags-same-pos-p (tag1 tag2)
-  (and (equal (moo-tag-beginning-position tag1)
-              (moo-tag-beginning-position tag2))
-       (let ((fname1 (moo-tag-get-filename tag1))
-             (fname2 (moo-tag-get-filename tag2)))
-         ;; normally all tags should have fname, but some don't
-         (or (null fname1)
-             (null fname2)
-             (equal fname1 fname2)))))
 
 (defun moo-tag-put-filename-to-types (types-list filename)
   (mapcar
@@ -623,7 +704,7 @@ Return non-nil if it was updated."
                          (filter (lambda (tag) (eq (cadr tag) 'function))
                                  (moo-filter-tag-by-name ,(cadr function) (moo-ttype->tmembers tag))))
                       (moo-desperately-find-sname (car function))))
-                    :test #'moo-tags-same-pos-p))
+                    :test #'moo-tags-pos=))
                   ;; smart pointer?
                   ((and (looking-back "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
                    (let* ((type (semantic-tag-get-attribute ctxt-type :type))
@@ -679,11 +760,11 @@ This includes the constructors of types with name STR."
 
 (defun moo-filter-tag-by-name (sname members)
   (filter (lambda (tag) (string= (car tag) sname))
-            members))
+          members))
 
 (defun moo-filter-tag-by-class (class members)
   (filter (lambda (tag) (semantic-tag-of-class-p tag class))
-            members))
+          members))
 
 (defun fa-fancy-string (wspace)
   "Return the string that corresponds to (nth fa-idx fa-lst).
@@ -950,7 +1031,6 @@ WSPACE is the padding."
 (defun moo-tag-constructor-p (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
 
-
 (defun moo-stype->tag (str)
   (or
    (unwind-protect
@@ -1129,7 +1209,6 @@ NAME is the TAG name."
         (0 (cons (car tag) (cdr typedef-p)))
         (t (error "typedef has multiple definitions"))))))
 
-
 (defun moo-tvar->ttype (var-tag)
   (let* ((var-name (car var-tag))
          (var-stype (car (semantic-tag-get-attribute var-tag :type)))
@@ -1137,8 +1216,6 @@ NAME is the TAG name."
     (if (moo-typedefp type-tag)
         (moo-dereference-typedef type-tag)
       type-tag)))
-
-(defalias 'filter 'cl-remove-if-not)
 
 (defun moo-tag-get-scope (tag)
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
@@ -1153,29 +1230,6 @@ NAME is the TAG name."
              sname
              (semantic-tag-get-attribute tag :members)))))
    tlist))
-
-(defun moo-typedefp (tag)
-  (semantic-tag-get-attribute tag :typedef))
-
-(defun moo-namespacep (tag)
-  (let ((attr (semantic-tag-get-attribute tag :type)))
-    (and (stringp attr)
-         (string= attr "namespace"))))
-
-(defun moo-functionp (tag)
-  (semantic-tag-of-class-p tag 'function))
-
-(defun moo-variablep (tag)
-  (semantic-tag-of-class-p tag 'variable))
-
-(defun moo-typep (tag)
-  (semantic-tag-of-class-p tag 'type))
-
-(defun moo-includep (tag)
-  (semantic-tag-of-class-p tag 'include))
-
-(defun moo-usingp (tag)
-  (semantic-tag-of-class-p tag 'using))
 
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
@@ -1227,57 +1281,6 @@ Skips anything between matching <...>"
                 ((= (char-after) char-dec)
                  (cl-decf n)))))
         (backward-char dir)))))
-
-(defmacro fa-and (&rest predicates)
-  "Return a lambda that combines the predicates with an and"
-  `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
-                       predicates))))
-
-(defun moo-virtualp (function-tag)
-  (and
-   (or
-    (member "virtual"
-            (semantic-tag-get-attribute
-             function-tag :typemodifiers))
-    (semantic-tag-get-attribute
-     function-tag :pure-virtual-flag))
-   ;; don't want distructors
-   (not (semantic-tag-get-attribute
-         function-tag :destructor-flag))))
-
-(defun test-with (pred x1 x2)
-  "Return (equal (PRED X1) (PRED X2))"
-  (equal (funcall pred x1)
-         (funcall pred x2)))
-
-(defun moo-variable= (v1 v2)
-  (and (moo-variablep v1)
-       (moo-variablep v2)
-       (test-with #'car v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
-
-(defun moo-function= (f1 f2)
-  (and (moo-functionp f1)
-       (moo-functionp f2)
-       (string= (car f1) (car f2))
-       (equal (semantic-tag-get-attribute f1 :typemodifiers)
-              (semantic-tag-get-attribute f2 :typemodifiers))
-       (equal (semantic-tag-get-attribute f1 :type)
-              (semantic-tag-get-attribute f2 :type))
-       (cl-every #'identity
-                 (cl-mapcar #'moo-variable=
-                            (semantic-tag-get-attribute f1 :arguments)
-                            (semantic-tag-get-attribute f2 :arguments)))))
-
-(defun moo-tag= (x1 x2)
-  (cond ((moo-functionp x1)
-         (moo-function= x1 x2))
-        ((moo-variablep x1)
-         (moo-variable= x1 x2))
-        (t
-         (equal (car x1) (car x2)))))
 
 (defun moo-propose (pred)
   "Display a list of current class members that satisfy PRED."
