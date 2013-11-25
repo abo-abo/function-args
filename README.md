@@ -74,6 +74,9 @@ Lists all member functions of current class' parents.
 ### `moo-jump-local`
 
 Offers to jump to any tag in current buffer.
+This function works for all modes supported by CEDET.
+It's especially convenient for elisp.
+It has a specialization for C++ that flattens namespaces.
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-4.png)
 
 # Bugs

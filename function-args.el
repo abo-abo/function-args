@@ -1334,6 +1334,7 @@ thinks is a list."
     (buffer-substring-no-properties beg end)))
 
 (defun moo-jump-local ()
+  "Select a tag to jump to from tags defined in current buffer."
   (interactive)
   (let ((tags (semantic-fetch-tags)))
     (moo-select-candidate
