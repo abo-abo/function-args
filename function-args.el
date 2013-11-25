@@ -379,7 +379,7 @@
 (defun moo-usingp (tag)
   (semantic-tag-of-class-p tag 'using))
 
-(defun moo-tag-constructor-p (tag)
+(defun moo-constructorp (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
 
 ;; ——— Comparers —————————————————————————————————————————————————————————————————————
@@ -420,7 +420,7 @@
         (t
          (equal (car x1) (car x2)))))
 
-(defun moo-tags-pos= (tag1 tag2)
+(defun moo-tag-pos= (tag1 tag2)
   "Return t if positions of TAG1 and TAG2 are equal."
   (and (equal (moo-tget-beginning-position tag1)
               (moo-tget-beginning-position tag2))
@@ -481,7 +481,7 @@
          ,(semantic-tag-overlay type))))
      ;; else
      (t
-      (filter #'moo-tag-constructor-p
+      (filter #'moo-constructorp
               (moo-get-member-functions type)))))))
 
 (defun moo-tget-enum-members (tag)
@@ -1069,7 +1069,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                          (filter (lambda (tag) (eq (cadr tag) 'function))
                                  (moo-filter-tag-by-name ,(cadr function) (moo-ttype->tmembers tag))))
                       (moo-desperately-find-sname (car function))))
-                    :test #'moo-tags-pos=))
+                    :test #'moo-tag-pos=))
                   ;; smart pointer?
                   ((and (looking-back "->") (not (semantic-tag-get-attribute ctxt-type :pointer)))
                    (let* ((type (semantic-tag-get-attribute ctxt-type :type))
@@ -1211,7 +1211,7 @@ This includes the constructors of types with name STR."
                         (when (eq parent-tag t)
                           (setq parent-tag)))
                       ;; don't inherit constructors
-                      (cl-delete-if #'moo-tag-constructor-p
+                      (cl-delete-if #'moo-constructorp
                                     (moo-ttype->tmembers parent-tag)))
                     (moo-tget-superclasses ttype))))
          (cands (apply #'append (cons own-members inherited-members))))
