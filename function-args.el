@@ -1032,7 +1032,7 @@ The default FORMATTER is `moo-tag->cons'."
   "Return for TAG a cons (STR . NAME).
 STR is the result of `moo-tag->str' on TAG,
 NAME is the TAG name."
-  (cons (moo-tag->str tag) (car tag)))
+  (cons (car tag) (moo-tag->str tag)))
 
 (defun moo-select-candidate (candidates action &optional name)
   (unless name
@@ -1043,8 +1043,10 @@ NAME is the TAG name."
      (helm :sources `((name . ,name)
                       (candidates . ,(mapcar
                                       (lambda(x)
-                                        (if (and (listp x) (listp (cdr x)))
-                                            (cons (car x) x)
+                                        (if (listp x)
+                                            (if (stringp (cdr x))
+                                                (cons (cdr x) (car x))
+                                              (cons (car x) x))
                                           x)) candidates))
                       (action . ,action))))
     (display-completion-list
@@ -1332,12 +1334,14 @@ thinks is a list."
 
 (defun moo-jump-local ()
   (interactive)
-  (moo-select-candidate
-   (funcall (if (eq major-mode 'c++-mode)
-                #'moo-flatten-namepaces
-              #'identity)
-            (semantic-fetch-tags))
-   #'moo-action-jump))
+  (let ((tags (semantic-fetch-tags)))
+    (moo-select-candidate
+     (if (eq major-mode 'c++-mode)
+         (mapcar
+          (lambda(x)(cons x (moo-tag->str x)))
+          (moo-flatten-namepaces tags))
+       tags)
+     #'moo-action-jump)))
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
