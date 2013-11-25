@@ -1056,6 +1056,12 @@ NAME is the TAG name."
     (erase-string prefix))
   (insert candidate))
 
+(defun moo-action-jump (tag)
+  (when (semantic-tag-p tag)
+    (push-mark)
+    (semantic-go-to-tag tag)
+    (switch-to-buffer (current-buffer))))
+
 (defun moo-tag->str (tag)
   (or (ignore-errors (fa-tfunction->fal tag t))
       (moo-vartag->str tag)))
@@ -1129,6 +1135,9 @@ NAME is the TAG name."
 
 (defun moo-typep (tag)
   (semantic-tag-of-class-p tag 'type))
+
+(defun moo-includep (tag)
+  (semantic-tag-of-class-p tag 'include))
 
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
@@ -1317,6 +1326,23 @@ thinks is a list."
     ;; maybe do something with beg and (point)
     (setq beg (point))
     (buffer-substring-no-properties beg end)))
+
+(defun moo-jump-local ()
+  (interactive)
+  (moo-select-candidate
+   (funcall (if (eq major-mode 'c++-mode)
+                #'moo-flatten-namepaces
+              #'identity)
+            (semantic-fetch-tags))
+   #'moo-action-jump))
+
+(defun moo-flatten-namepaces (tags)
+  "Traverse the namespace forest TAGS and return the leafs."
+  (let (out tag)
+    (while (setq tag (pop tags))
+      (unless (moo-includep tag)
+        (push tag out)))
+    out))
 
 (provide 'function-args)
 ;;; function-args.el ends here
