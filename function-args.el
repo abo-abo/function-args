@@ -1354,10 +1354,12 @@ thinks is a list."
              )
 
             ((moo-namespacep tag)
-             (push tag out)
              (setq out
-                   (append out (moo-flatten-namepaces
-                                (semantic-tag-get-attribute tag :members)))))
+                   (nconc
+                    (nreverse (moo-flatten-namepaces
+                               (semantic-tag-get-attribute tag :members)))
+                    (list tag)
+                    out)))
             (t (push tag out))))
     (nreverse out)))
 
