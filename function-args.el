@@ -162,26 +162,8 @@
     (fa-do-show)
     (fa-start-tracking)))
 
-(defun fa-do-position ()
-  "Position the cursor at the `(', which is logically closest"
-  (cond
-    ((looking-at "("))
-    ((looking-back "(")
-     (backward-char))
-    ((looking-back "^\\([^(\n]*\\)([^(\n]*")
-     (re-search-backward "("))
-    ((looking-at "[^\n]*([^\n]*$")
-     (re-search-forward "(")
-     (backward-char))
-    (t
-     (error "not inside function")))
-  (unless (looking-back "^[ \t]*")
-    (while (looking-back " ")
-      (backward-char)))
-  (point))
-
 (defmacro fa-idx-cycle (arg)
-  "Cycle `fa-idx' by ARG and update the hint."
+  "Cycle `fa-idx' by ARG and redisplay function arguments."
   `(lambda ()
      (interactive)
      (setq fa-idx
@@ -733,6 +715,24 @@ NAME is the TAG name."
       (car tag)))
 
 ;; ——— Misc non-pure —————————————————————————————————————————————————————————————————
+(defun fa-do-position ()
+  "Position the cursor at the `(', which is logically closest"
+  (cond
+    ((looking-at "("))
+    ((looking-back "(")
+     (backward-char))
+    ((looking-back "^\\([^(\n]*\\)([^(\n]*")
+     (re-search-backward "("))
+    ((looking-at "[^\n]*([^\n]*$")
+     (re-search-forward "(")
+     (backward-char))
+    (t
+     (error "not inside function")))
+  (unless (looking-back "^[ \t]*")
+    (while (looking-back " ")
+      (backward-char)))
+  (point))
+
 (defun fa-do-show ()
   "Show function arguments hint."
   (save-excursion
