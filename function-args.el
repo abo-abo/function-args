@@ -705,12 +705,9 @@ NAME is the TAG name."
       (overlay-put fa-overlay 'after-string ""))))
 
 (defun fa-start-tracking ()
-  (let ((beg (save-excursion (re-search-backward "(" nil t) (point)))
-        (end (save-excursion (re-search-forward ")" nil t) (- (point) 1))))
-    (setq fa-beg-pos beg)
-    (setq fa-end-pos end)
-    (add-hook 'after-change-functions
-              'fa-after-change)))
+  (setq fa-beg-pos (save-excursion (re-search-backward "(" nil t) (point)))
+  (setq fa-end-pos (save-excursion (re-search-forward ")" nil t) (- (point) 1)))
+  (add-hook 'after-change-functions 'fa-after-change))
 
 (defun fa-update-arg ()
   "Update `fa-arg' if it needs to be updated.
