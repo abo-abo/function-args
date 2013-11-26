@@ -294,25 +294,37 @@ When ARG is not nil offer only variables as candidates."
          (string= attr "namespace"))))
 
 (defun moo-functionp (tag)
+  "Return t if TAG is a function tag."
   (semantic-tag-of-class-p tag 'function))
 
 (defun moo-variablep (tag)
+  "Return t if TAG is a variable tag."
   (semantic-tag-of-class-p tag 'variable))
 
 (defun moo-typep (tag)
+  "Return t if TAG is a type tag."
   (semantic-tag-of-class-p tag 'type))
 
 (defun moo-includep (tag)
+  "Return t if TAG is an include tag."
   (semantic-tag-of-class-p tag 'include))
 
 (defun moo-usingp (tag)
+  "Return t if TAG is a using tag."
   (semantic-tag-of-class-p tag 'using))
 
 (defun moo-constructorp (tag)
+  "Return t if TAG is a constructor tag."
   (semantic-tag-get-attribute tag :constructor-flag))
 
 (defun moo-prototype-flag-p (tag)
+  "Return t if TAG is a has a prototype-flag."
   (semantic-tag-get-attribute tag :prototype-flag))
+
+(defun moo-enump (tag)
+  "Return t if TAG is an enum tag."
+  (and (moo-typep tag)
+       (equal "enum" (semantic-tag-get-attribute tag :type))))
 
 ;; ——— Comparers —————————————————————————————————————————————————————————————————————
 (defun fa-test-with (pred x1 x2)
@@ -365,12 +377,14 @@ When ARG is not nil offer only variables as candidates."
 
 ;; ——— Tag getters ———————————————————————————————————————————————————————————————————
 (defun moo-tget-filename (tag)
+  "Get TAG file name."
   (or (semantic--tag-get-property tag :filename)
       (and (overlayp (car (last tag)))
            (buffer-file-name
             (overlay-buffer (car (last tag)))))))
 
 (defun moo-tget-beginning-position (tag)
+  "Get TAG beginning position."
   (let ((x (car (last tag))))
     (cond ((overlayp x)
            (overlay-start x))
@@ -379,6 +393,7 @@ When ARG is not nil offer only variables as candidates."
           (t 0))))
 
 (defun moo-tget-end-position (tag)
+  "Get TAG end position."
   (let ((x (car (last tag))))
     (cond ((overlayp x)
            (overlay-end x))
@@ -386,42 +401,40 @@ When ARG is not nil offer only variables as candidates."
            (aref x 1))
           (t 0))))
 
-(defun moo-tget-constructors (type)
+(defun moo-tget-constructors (tag)
+  "Assuming TAG is a type tag, return its constructors."
   (ignore-errors
-    (setq type (moo-dereference-typedef type))
-    (let ((enump (moo-tget-enum-members type)))
+    (setq tag (moo-dereference-typedef tag))
+    (let ((enump (moo-tget-enum-members tag)))
       (cond
         ;; enum
         (enump
          `((
             ;; name
-            ,(semantic-tag-name type)
+            ,(semantic-tag-name tag)
              ;; class
-             function
+            function
              ;; attributes
-             (:arguments
-              ((,(mapconcat
-                  #'car
-                  enump
-                  " | ")
-                 variable (:type ,(semantic-tag-name type))))
-              :type
-              "enum")
+            (:arguments
+             ((,(mapconcat
+                 #'car
+                 enump
+                 " | ")
+                variable (:type ,(semantic-tag-name tag))))
+             :type
+             "enum")
              ;; properties
-             ,(semantic-tag-properties type)
+            ,(semantic-tag-properties tag)
              ;; overlay
-             ,(semantic-tag-overlay type))))
+            ,(semantic-tag-overlay tag))))
         ;; else
         (t
          (filter #'moo-constructorp
-                 (moo-get-member-functions type)))))))
+                 (moo-get-member-functions tag)))))))
 
 (defun moo-tget-enum-members (tag)
-  (let ((stag (and (moo-typep tag)
-                   (semantic-tag-get-attribute tag :type))))
-    (and (stringp stag)
-         (string= stag "enum")
-         (semantic-tag-get-attribute tag :members))))
+  (when (moo-enump tag)
+    (semantic-tag-get-attribute tag :members)))
 
 (defun moo-tget-superclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
