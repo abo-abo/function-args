@@ -1147,24 +1147,18 @@ This includes the constructors of types with name STR."
                ctxt))))))
 
 (defun moo-stype->tag (str)
-  (or
-   (ignore-errors
-     (let ((scope (semantic-calculate-scope (point))))
-       ;; TODO: check (= (length retval) 1)
-       (car
-        (catch 'unfindable
-          (semantic-analyze-find-tag-sequence
-           (list str) scope 'prefixtypes 'unfindable)))))
-   (let ((candidates (filter
-                      (lambda(x)
-                        (and (moo-typep x) (semantic-tag-get-attribute x :members)))
-                      (moo-desperately-find-sname str))))
-     (cond ((= 0 (length candidates)))
-
-           ((= 1 (length candidates))
-            (car candidates))
-
-           (t (error "`moo-stype->tag': too many candidates"))))))
+  (let ((candidates
+         (or (ignore-errors
+               (catch 'unfindable
+                 (semantic-analyze-find-tag-sequence
+                  (list str) (semantic-calculate-scope (point)) 'prefixtypes 'unfindable)))
+             (filter
+              (lambda(x) (and (moo-typep x) (semantic-tag-get-attribute x :members)))
+              (moo-desperately-find-sname str)))))
+    (cond ((= 0 (length candidates)))
+          ((= 1 (length candidates))
+           (car candidates))
+          (t (error "`moo-stype->tag': too many candidates")))))
 
 (defun moo-get-member-functions (ttype)
   (cond
