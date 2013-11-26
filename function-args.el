@@ -439,33 +439,33 @@
 
 (defun moo-tget-constructors (type)
   (ignore-errors
-  (setq type (moo-dereference-typedef type))
-  (let ((enump (moo-tget-enum-members type)))
-    (cond
-     ;; enum
-     (enump
-      `((
-         ;; name
-         ,(semantic-tag-name type)
-         ;; class
-         function
-         ;; attributes
-         (:arguments
-          ((,(mapconcat
-              #'car
-              enump
-              " | ")
-            variable (:type ,(semantic-tag-name type))))
-          :type
-          "enum")
-         ;; properties
-         ,(semantic-tag-properties type)
-         ;; overlay
-         ,(semantic-tag-overlay type))))
-     ;; else
-     (t
-      (filter #'moo-constructorp
-              (moo-get-member-functions type)))))))
+    (setq type (moo-dereference-typedef type))
+    (let ((enump (moo-tget-enum-members type)))
+      (cond
+        ;; enum
+        (enump
+         `((
+            ;; name
+            ,(semantic-tag-name type)
+             ;; class
+            function
+             ;; attributes
+            (:arguments
+             ((,(mapconcat
+                 #'car
+                 enump
+                 " | ")
+                variable (:type ,(semantic-tag-name type))))
+             :type
+             "enum")
+             ;; properties
+            ,(semantic-tag-properties type)
+             ;; overlay
+            ,(semantic-tag-overlay type))))
+        ;; else
+        (t
+         (filter #'moo-constructorp
+                 (moo-get-member-functions type)))))))
 
 (defun moo-tget-enum-members (tag)
   (let ((stag (and (moo-typep tag)
@@ -1095,14 +1095,11 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                (list (fa-tfunction->fal fntag)))))))
 
 (defun fa-process-tag-according-to-class (tag)
-  "TTAGS is a list of tags with the same name.
-Reduce them to functions only"
+  "Coerse TAG to list of functions with same name."
   (cond ((moo-functionp tag)
          (list tag))
         ((moo-typep tag)
-         (moo-tget-constructors
-          ;; (moo-dereference-typedef tag scope
-          tag))
+         (moo-tget-constructors tag))
         ((moo-variablep tag)
          nil)
         (t nil)))
