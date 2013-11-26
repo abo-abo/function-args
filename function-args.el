@@ -523,7 +523,7 @@ WSPACE is the padding."
                 :throws
                 :filename)
                (pop r))
-              (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
+              (t (error "Unknown token %s" item))))
           (let ((argument-conses (mapcar
                                   #'fa-tvar->cons
                                   (mapcar
@@ -558,46 +558,33 @@ WSPACE is the padding."
                           ", ")
                ");"))))))))
 
+(defun fa-throw-unless-eq (x v)
+  "Return t if X equals V.
+Raise an error otherwise."
+  (unless (eq x v)
+    (error "Expected %s got %s" v x)))
+
 (defun fa-tvar->cons (sm)
   (let ((name (pop sm))
         (name-e (pop sm)))
     (let ((r (pop sm))
-          (s "")
-          item
-          reference-p
-          constant-p
-          typemodifiers-p
-          pointer-p
-          type-p
-          dereference-p
-          default-value-p
-          function-pointer-p
-          arguments-p)
+          item constant-flag-p type-p
+          reference-p pointer-p dereference-p)
         (while r
           (setq item (pop r))
           (case item
-            (:reference
-             (setq reference-p t)
-             (unless (eq (pop r) 1) (error "expected 1")))
-            (:constant-flag
-             (setq constant-p t)
-             (unless (eq (pop r) t) (error "expected t")))
-            (:type (setq type-p (pop r)))
-            (:typemodifiers
-             (setq typemodifiers-p (pop r)))
-            (:pointer
-             (setq pointer-p (pop r)))
-            (:dereference
-             (setq dereference-p (pop r)))
-            (:default-value
-             (message (setq default-value-p (pop r))))
-            ;; ——— function pointer specific —————————————————————————————————————————
-            (:function-pointer
-             (setq function-pointer-p (pop r)))
-            (:arguments
-             (setq arguments-p (pop r)))
-            (t (error (concat "unknown token" (prin1-to-string item))))))
-        (cons (concat (and constant-p "const ")
+            (:constant-flag    (setq constant-flag-p t) (fa-throw-unless-eq (pop r) t))
+            (:type             (setq type-p             (pop r)))
+            (:reference        (setq reference-p t)     (fa-throw-unless-eq (pop r) 1))
+            (:pointer          (setq pointer-p          (pop r)))
+            (:dereference      (setq dereference-p      (pop r)))
+            (:default-value    (message (pop r)))
+            ((:typemodifiers
+              :function-pointer
+              :arguments)
+             (pop r))
+            (t (error "Unknown token %s" item))))
+        (cons (concat (and constant-flag-p "const ")
                       (fa-ttype->str type-p))
               (concat (and reference-p "&")
                       (and pointer-p "*")
