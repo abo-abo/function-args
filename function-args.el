@@ -267,25 +267,28 @@ When ARG is not nil offer only variables as candidates."
                        predicates))))
 
 (defun fa-char-upcasep (c)
+  "Return t if C is upper case."
   (eq c (upcase c)))
 
-(defun moo-virtualp (function-tag)
+(defun moo-virtualp (tag)
+  "Return t if TAG is a virtual function tag."
   (and
    (or
     (member "virtual"
             (semantic-tag-get-attribute
-             function-tag :typemodifiers))
+             tag :typemodifiers))
     (semantic-tag-get-attribute
-     function-tag :pure-virtual-flag))
+     tag :pure-virtual-flag))
    ;; don't want distructors
    (not (semantic-tag-get-attribute
-         function-tag :destructor-flag))))
+         tag :destructor-flag))))
 
 (defun moo-typedefp (tag)
   "Return string definition of TAG if it's a typedef."
   (car (semantic-tag-get-attribute tag :typedef)))
 
 (defun moo-namespacep (tag)
+  "Return t if TAG is a namespace tag."
   (let ((attr (semantic-tag-get-attribute tag :type)))
     (and (stringp attr)
          (string= attr "namespace"))))
@@ -313,7 +316,7 @@ When ARG is not nil offer only variables as candidates."
 
 ;; ——— Comparers —————————————————————————————————————————————————————————————————————
 (defun test-with (pred x1 x2)
-  "Return (equal (PRED X1) (PRED X2))"
+  "Return (equal (PRED X1) (PRED X2))."
   (equal (funcall pred x1)
          (funcall pred x2)))
 
@@ -495,7 +498,7 @@ WSPACE is the padding."
     (if (eq name-e 'type)
         (propertize name 'face 'font-lock-type-face)
       (if (not (eq name-e 'function))
-          (error "not a function")
+          (error "Not a function")
         (let ((r (pop sm))
               template-p
               type-p
@@ -602,7 +605,7 @@ TYPE and NAME are strings."
     (let ((name (pop tag))
           (tag-class (pop tag)))
       (if (not (eq tag-class 'type))
-          (error "not a type")
+          (error "Not a type")
         (let ((rst (pop tag))
               item
               template-specifier-p)
@@ -632,7 +635,7 @@ NAME is the TAG name."
 
 ;; ——— Misc non-pure —————————————————————————————————————————————————————————————————
 (defun fa-do-position ()
-  "Position the cursor at the `(', which is logically closest"
+  "Position the cursor at the `(', which is logically closest."
   (cond
     ((looking-at "("))
     ((looking-back "(")
@@ -643,7 +646,7 @@ NAME is the TAG name."
      (re-search-forward "(")
      (backward-char))
     (t
-     (error "not inside function")))
+     (error "Not inside function")))
   (unless (looking-back "^[ \t]*")
     (while (looking-back " ")
       (backward-char)))
@@ -715,11 +718,12 @@ Return non-nil if it was updated."
   (let ((case-fold-search nil))
     (if (looking-back str)
         (delete-region (match-beginning 0) (match-end 0))
-      (error "Can't erase %s." str))))
+      (error "Can't erase %s" str))))
 
 (defun fa-backward-char-skip<> (&optional arg)
-  "Moves point backward until [A-Za-z_0-9] is encountered.
-Skips anything between matching <...>"
+  "Move point backward until [A-Za-z_0-9] is encountered.
+Skips anything between matching <...>.
+Reverse direction when ARG is not nil."
   (let ((dir (if arg -1 1))
         (char-inc (if arg ?< ?>))
         (char-dec (if arg ?> ?<)))
@@ -739,7 +743,7 @@ Skips anything between matching <...>"
         (backward-char dir)))))
 
 (defun moo-handle-completion (prefix candidates &optional formatter)
-  "Select tag that starts with PREFIX from CANDIDATES.
+  "Select tag that starting with PREFIX from CANDIDATES.
 FORMATTER is used to convert tag to string.
 The default FORMATTER is `moo-tag->cons'."
   (cond
@@ -844,7 +848,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                (,@(apply #'append
                          (mapcar #'moo-ttype->tmembers matches))))))
       (t
-       (error "multiple definitions for %s" str)))))
+       (error "Multiple definitions for %s" str)))))
 
 (defun moo-type-tag-at-point (str)
   (let* ((matches (moo-desperately-find-sname str))
@@ -863,7 +867,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
       ((eq 1 (length filtered-matches))
        (car filtered-matches))
       (t
-       (error "multiple definitions for %s" str)))))
+       (error "Multiple definitions for %s" str)))))
 
 (defun moo-complete-candidates-2 (prefix var-name)
   (let* ((var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
@@ -899,7 +903,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                               var-tag)
                              ((moo-variablep var-tag)
                               (moo-tvar->ttype var-tag))
-                             (t (error "unexpected")))))))
+                             (t (error "Unexpected")))))))
          (pred (cond
                  ((= (length prefix) 0)
                   #'identity)
@@ -1069,7 +1073,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
         (t nil)))
 
 (defun fa-process (str ttype)
-  "Get all functions of TTYPE with name STR.
+  "Get all functions with name STR from TTYPE.
 This includes the constructors of types with name STR."
   (let (
         ;; TODO: this fails for namespaces such as std::
@@ -1096,7 +1100,7 @@ This includes the constructors of types with name STR."
 (defun moo-ctxt-type ()
   (let ((ctxt (semantic-analyze-current-context (point))))
     (if (null ctxt)
-        (error "nothing under cursor")
+        (error "Nothing under cursor")
       (setq ctxt (car (oref ctxt prefix)))
       (ignore-errors
         (cond ((stringp ctxt)
@@ -1148,7 +1152,7 @@ Returns TAG if it's not a typedef."
         (case (length defs)
           (1 (car defs))
           (0 (cons (car tag) (cdr typedef-p)))
-          (t (error "typedef has multiple definitions")))))))
+          (t (error "Typedef has multiple definitions")))))))
 
 (defun moo-navigate-members (tag)
   (let ((typedef (semantic-tag-get-attribute tag :typedef)))
@@ -1229,7 +1233,7 @@ Returns TAG if it's not a typedef."
            (list own-tags))))
 
 (defun moo-namespace-reduce (func tags)
-  "Traverse the forest TAGS, reducing with two-argument function FUNC."
+  "Reduce with two-argument function FUNC the forest TAGS."
   (cl-labels ((namespace-reduce
                (func tags out)
                (dolist (tag tags)
@@ -1301,16 +1305,12 @@ Returns TAG if it's not a typedef."
         (cons name template)))))
 
 (defun moo-list-at-point ()
-  "Return any list at point. At least what the syntax
-thinks is a list."
-  (let ((beg (point))
-        end)
-    (forward-list)
-    (setq end (point))
+  "Return any list at point.
+At least what the syntax thinks is a list."
+  (forward-list)
+  (let ((end (point)))
     (backward-list)
-    ;; maybe do something with beg and (point)
-    (setq beg (point))
-    (buffer-substring-no-properties beg end)))
+    (buffer-substring-no-properties (point) end)))
 
 (provide 'function-args)
 ;;; function-args.el ends here
