@@ -1148,21 +1148,17 @@ This includes the constructors of types with name STR."
 
 (defun moo-stype->tag (str)
   (or
-   (unwind-protect
-        (let (retval)
-          (let* ((position (point))
-                 (scope (semantic-calculate-scope position)))
-            (ignore-errors
-              (setq retval
-                    (catch 'unfindable
-                      (semantic-analyze-find-tag-sequence
-                       (list str) scope 'prefixtypes 'unfindable))))
-            ;; TODO: check (= (length retval) 1)
-            (car retval))))
+   (ignore-errors
+     (let ((scope (semantic-calculate-scope (point))))
+       ;; TODO: check (= (length retval) 1)
+       (car
+        (catch 'unfindable
+          (semantic-analyze-find-tag-sequence
+           (list str) scope 'prefixtypes 'unfindable)))))
    (let ((candidates (filter
                       (lambda(x)
                         (and (moo-typep x) (semantic-tag-get-attribute x :members)))
-                             (moo-desperately-find-sname str))))
+                      (moo-desperately-find-sname str))))
      (cond ((= 0 (length candidates)))
 
            ((= 1 (length candidates))
