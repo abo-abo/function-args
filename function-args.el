@@ -161,7 +161,6 @@
     (setq fa-idx 0)
     (setq fa-hint-pos (point))
     (fa-update-arg)
-    (fa-do-show)
     (fa-start-tracking)))
 
 (defmacro fa-idx-cycle (arg)
@@ -171,8 +170,7 @@
      (setq fa-idx
            (mod (+ fa-idx ,arg)
                 (length fa-lst)))
-     (fa-update-arg)
-     (fa-do-show)))
+     (fa-update-arg)))
 
 (defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
@@ -185,8 +183,7 @@
                      'fa-after-change)
         (remove-hook 'before-change-functions
                      'fa-before-change))
-    (fa-update-arg)
-    (fa-do-show)))
+    (fa-update-arg)))
 
 (defun fa-jump ()
   "Jump to current function of `fa-arg'."
@@ -674,6 +671,30 @@ NAME is the TAG name."
       (backward-char)))
   (point))
 
+(defun fa-start-tracking ()
+  (setq fa-beg-pos (save-excursion (re-search-backward "(" nil t) (point)))
+  (setq fa-end-pos (save-excursion (re-search-forward ")" nil t) (- (point) 1)))
+  (add-hook 'after-change-functions 'fa-after-change))
+
+(defun fa-update-arg (&optional arg)
+  "Update `fa-arg' if it needs to be updated."
+  (let ((argn (semantic-ctxt-current-argument)))
+    (unless (and
+             (not
+              (cond ((numberp argn)
+                     (when (and (>= argn 1)
+                                (< argn (length (nth fa-idx fa-lst))))
+                       (if (eq fa-arg (1- argn))
+                           nil
+                         (setq fa-arg (1- argn)))))
+                    ((null argn)
+                     (setq fa-arg 0)
+                     nil)
+                    (t
+                     (fa-abort))))
+             arg)
+      (fa-do-show))))
+
 (defun fa-do-show ()
   "Show function arguments hint."
   (save-excursion
@@ -697,27 +718,6 @@ NAME is the TAG name."
       (overlay-put fa-overlay 'display str)
       (overlay-put fa-overlay 'after-string ""))))
 
-(defun fa-start-tracking ()
-  (setq fa-beg-pos (save-excursion (re-search-backward "(" nil t) (point)))
-  (setq fa-end-pos (save-excursion (re-search-forward ")" nil t) (- (point) 1)))
-  (add-hook 'after-change-functions 'fa-after-change))
-
-(defun fa-update-arg ()
-  "Update `fa-arg' if it needs to be updated.
-Return non-nil if it was updated."
-  (let ((argn (semantic-ctxt-current-argument)))
-    (cond ((numberp argn)
-           (when (and (>= argn 1)
-                      (< argn (length (nth fa-idx fa-lst))))
-             (if (eq fa-arg (1- argn))
-                 nil
-               (setq fa-arg (1- argn)))))
-          ((null argn)
-           (setq fa-arg 0)
-           nil)
-          (t
-           (fa-abort)))))
-
 (defun fa-after-change (beg end len)
   (if (or (< beg fa-beg-pos)
           (> beg fa-end-pos))           ; out of range, abort
@@ -731,8 +731,7 @@ Return non-nil if it was updated."
        (cl-incf fa-end-pos (- end beg)))
       ((eq beg end)                     ; deletion
        (decf fa-end-pos len)))
-    (when (fa-update-arg)
-      (fa-do-show))))
+    (fa-update-arg t)))
 
 (defun fa-backward-char-skip<> (&optional arg)
   "Move point backward until [A-Za-z_0-9] is encountered.
