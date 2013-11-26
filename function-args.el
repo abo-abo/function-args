@@ -433,20 +433,25 @@ When ARG is not nil offer only variables as candidates."
                  (moo-get-member-functions tag)))))))
 
 (defun moo-tget-enum-members (tag)
+  "Return members of enum TAG."
   (when (moo-enump tag)
     (semantic-tag-get-attribute tag :members)))
 
-(defun moo-tget-superclasses (ttype)
-  (semantic-tag-get-attribute ttype :superclasses))
+(defun moo-tget-superclasses (tag)
+  "Return a list of superclass tags for TAG."
+  (semantic-tag-get-attribute tag :superclasses))
 
 (defun moo-tget-scope (tag)
+  "Return scope part of TAG."
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
 ;; ——— Tag setters ———————————————————————————————————————————————————————————————————
 (defun moo-tput-filename (tag filename)
+  "Set TAG's :filename property to FILENAME."
   (semantic--tag-put-property tag :filename filename))
 
 (defun moo-tput-filename-to-types (types-list filename)
+  "Set :filename property for members of types on TYPES-LIST to FILENAME."
   (mapcar
    (lambda(type)
      (semantic-tag-put-attribute
@@ -496,6 +501,9 @@ WSPACE is the padding."
      (and (cadar lst) (propertize (cadar lst) 'face 'fa-face-type)))))
 
 (defun fa-fancy-argument (cell &optional bold)
+  "Return string representation for CELL.
+CELL is (TYPE . NAME).
+Select bold faces when BOLD is t."
   (concat
    (propertize (car cell) 'face
                (if bold 'fa-face-type-bold 'fa-face-type))
@@ -503,16 +511,17 @@ WSPACE is the padding."
    (propertize (cdr cell) 'face
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
-(defun fa-tfunction->fal (sm &optional output-string)
-  (let ((filename (moo-tget-filename sm))
-        (position (moo-tget-beginning-position sm))
-        (name (pop sm))
-        (name-e (pop sm)))
+(defun fa-tfunction->fal (tag &optional output-string)
+  "Return function argument list structure for TAG."
+  (let ((filename (moo-tget-filename tag))
+        (position (moo-tget-beginning-position tag))
+        (name (pop tag))
+        (name-e (pop tag)))
     (if (eq name-e 'type)
         (propertize name 'face 'font-lock-type-face)
       (if (not (eq name-e 'function))
           (error "Not a function")
-        (let ((r (pop sm))
+        (let ((r (pop tag))
               template-p
               type-p
               arguments-p
