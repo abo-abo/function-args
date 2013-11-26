@@ -339,7 +339,8 @@
          function-tag :destructor-flag))))
 
 (defun moo-typedefp (tag)
-  (semantic-tag-get-attribute tag :typedef))
+  "Return string definition of TAG if it's a typedef."
+  (car (semantic-tag-get-attribute tag :typedef)))
 
 (defun moo-namespacep (tag)
   (let ((attr (semantic-tag-get-attribute tag :type)))
