@@ -476,6 +476,9 @@
 (defun moo-tget-superclasses (ttype)
   (semantic-tag-get-attribute ttype :superclasses))
 
+(defun moo-tget-scope (tag)
+  (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
+
 ;; ——— Tag setters ———————————————————————————————————————————————————————————————————
 (defun moo-tput-filename (tag filename)
   (semantic--tag-put-property tag :filename filename))
@@ -1217,7 +1220,7 @@ This includes the constructors of types with name STR."
 (defun moo-dereference-typedef (tag)
   "if tag is a typedef, search for it in scope."
   (let ((typedef-p (moo-typedefp tag))
-        (scope (moo-tag-get-scope tag))
+        (scope (moo-tget-scope tag))
         defs)
     (if (null typedef-p)
         tag
@@ -1236,9 +1239,6 @@ This includes the constructors of types with name STR."
     (if (moo-typedefp type-tag)
         (moo-dereference-typedef type-tag)
       type-tag)))
-
-(defun moo-tag-get-scope (tag)
-  (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
 (defun moo-get-tag-by-name (sname tlist)
   (cl-mapcan
