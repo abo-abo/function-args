@@ -525,7 +525,7 @@ WSPACE is the padding."
                (pop r))
               (t (error "Unknown token %s" item))))
           (let ((argument-conses (mapcar
-                                  #'fa-tvar->cons
+                                  #'fa-variable->cons
                                   (mapcar
                                    (lambda (x) (if (string= (car x) "") (setcar x "")) x)
                                    arguments-p))))
@@ -564,33 +564,34 @@ Raise an error otherwise."
   (unless (eq x v)
     (error "Expected %s got %s" v x)))
 
-(defun fa-tvar->cons (sm)
-  (let ((name (pop sm))
-        (name-e (pop sm)))
-    (let ((r (pop sm))
-          item constant-flag-p type-p
-          reference-p pointer-p dereference-p)
-        (while r
-          (setq item (pop r))
-          (case item
-            (:constant-flag    (setq constant-flag-p t) (fa-throw-unless-eq (pop r) t))
-            (:type             (setq type-p             (pop r)))
-            (:reference        (setq reference-p t)     (fa-throw-unless-eq (pop r) 1))
-            (:pointer          (setq pointer-p          (pop r)))
-            (:dereference      (setq dereference-p      (pop r)))
-            (:default-value    (message (pop r)))
-            ((:typemodifiers
-              :function-pointer
-              :arguments)
-             (pop r))
-            (t (error "Unknown token %s" item))))
-        (cons (concat (and constant-flag-p "const ")
-                      (fa-ttype->str type-p))
-              (concat (and reference-p "&")
-                      (and pointer-p "*")
-                      ;; pretty up std:: identifiers
-                      (replace-regexp-in-string "^_+" "" name)
-                      (and dereference-p "[]"))))))
+(defun fa-variable->cons (tag)
+  "Return (TYPE . NAME) for variable TAG.
+TYPE and NAME are strings."
+  (let ((name (pop tag))
+        (r (progn (pop tag)(pop tag)))
+        item constant-flag-p type-p
+        reference-p pointer-p dereference-p)
+    (while r
+      (setq item (pop r))
+      (case item
+        (:constant-flag    (setq constant-flag-p t) (fa-throw-unless-eq (pop r) t))
+        (:type             (setq type-p             (pop r)))
+        (:reference        (setq reference-p t)     (fa-throw-unless-eq (pop r) 1))
+        (:pointer          (setq pointer-p          (pop r)))
+        (:dereference      (setq dereference-p      (pop r)))
+        (:default-value    (message (pop r)))
+        ((:typemodifiers
+          :function-pointer
+          :arguments)
+         (pop r))
+        (t (error "Unknown token %s" item))))
+    (cons (concat (and constant-flag-p "const ")
+                  (fa-ttype->str type-p))
+          (concat (and reference-p "&")
+                  (and pointer-p "*")
+                  ;; pretty up std:: identifiers
+                  (replace-regexp-in-string "^_+" "" name)
+                  (and dereference-p "[]")))))
 
 (defun fa-ttype->str (sm)
   (if (stringp sm)
