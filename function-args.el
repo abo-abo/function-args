@@ -199,65 +199,6 @@
       (goto-char
        (cdr tag)))))
 
-(defun moo-complete-candidates-2 (prefix var-name)
-  (let* ((var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
-         (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
-         (var-tag (moo-tag-at-point var-name))
-         (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
-         (tmembers (moo-ttype->tmembers
-                    (cond
-                      (var-used-as-classvar-p
-                       (or
-                        ;; semantic may think it's a function
-                        (moo-complete-type-member var-tag)
-                        ;; this works sometimes
-                        (moo-sname->tag var-name)))
-                      ;; Type::member
-                      ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
-                       (if (moo-functionp var-tag)
-                           (moo-sname->tag var-name)
-                         var-tag))
-                      (var-used-as-pointer-p
-                       ;; is it a usual pointer or a smart pointer?
-                       (if var-pointer-p
-                           (moo-complete-type-member var-tag)
-                         (let ((type-template (semantic-tag-get-attribute
-                                               (semantic-tag-get-attribute var-tag :type)
-                                               :template-specifier)))
-                           ;; assume that the first template parameter is the relevant one
-                           ;; (normally, there should be only one anyway)
-                           (moo-stype->tag (caar type-template)))))
-                      ;; otherwise just get its type
-                      (t
-                       (cond ((moo-typep var-tag)
-                              var-tag)
-                             ((moo-variablep var-tag)
-                              (moo-tvar->ttype var-tag))
-                             (t (error "unexpected")))))))
-         (pred (cond
-                 ((= (length prefix) 0)
-                  #'identity)
-                 ;; wildcard
-                 ((eq ?_ (aref prefix 0))
-                  `(lambda(x) (cl-search ,(substring prefix 1) (downcase (car x)))))
-                 ;; case-sensitive
-                 ((fa-char-upcasep (aref prefix 0))
-                  (lambda(x) (eq 0 (cl-search prefix (car x)))))
-                 ;; case-insensitive
-                 (t
-                  `(lambda(x) (eq 0 (cl-search ,(downcase prefix) (downcase (car x)))))))))
-    (filter pred tmembers)))
-
-(defun moo-complete-candidates-1 (prefix)
-  (let ((candidates-1 (semantic-analyze-possible-completions
-                       (semantic-analyze-current-context (point))))
-        (candidates-2 (and (featurep 'semantic/db)
-                           (semanticdb-minor-mode-p)
-                           (ignore-errors
-                             (semanticdb-fast-strip-find-results
-                              (semanticdb-deep-find-tags-for-completion prefix))))))
-    (append candidates-1 candidates-2)))
-
 
 (defun moo-complete (arg)
   "Complete current C++ symbol at point."
@@ -364,6 +305,9 @@
 
 (defun moo-constructorp (tag)
   (semantic-tag-get-attribute tag :constructor-flag))
+
+(defun moo-prototype-flag-p (tag)
+  (semantic-tag-get-attribute tag :prototype-flag))
 
 ;; ——— Comparers —————————————————————————————————————————————————————————————————————
 (defun test-with (pred x1 x2)
@@ -957,6 +901,65 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
       (t
        (error "multiple definitions for %s" str)))))
 
+(defun moo-complete-candidates-2 (prefix var-name)
+  (let* ((var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
+         (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
+         (var-tag (moo-tag-at-point var-name))
+         (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
+         (tmembers (moo-ttype->tmembers
+                    (cond
+                      (var-used-as-classvar-p
+                       (or
+                        ;; semantic may think it's a function
+                        (moo-complete-type-member var-tag)
+                        ;; this works sometimes
+                        (moo-sname->tag var-name)))
+                      ;; Type::member
+                      ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
+                       (if (moo-functionp var-tag)
+                           (moo-sname->tag var-name)
+                         var-tag))
+                      (var-used-as-pointer-p
+                       ;; is it a usual pointer or a smart pointer?
+                       (if var-pointer-p
+                           (moo-complete-type-member var-tag)
+                         (let ((type-template (semantic-tag-get-attribute
+                                               (semantic-tag-get-attribute var-tag :type)
+                                               :template-specifier)))
+                           ;; assume that the first template parameter is the relevant one
+                           ;; (normally, there should be only one anyway)
+                           (moo-stype->tag (caar type-template)))))
+                      ;; otherwise just get its type
+                      (t
+                       (cond ((moo-typep var-tag)
+                              var-tag)
+                             ((moo-variablep var-tag)
+                              (moo-tvar->ttype var-tag))
+                             (t (error "unexpected")))))))
+         (pred (cond
+                 ((= (length prefix) 0)
+                  #'identity)
+                 ;; wildcard
+                 ((eq ?_ (aref prefix 0))
+                  `(lambda(x) (cl-search ,(substring prefix 1) (downcase (car x)))))
+                 ;; case-sensitive
+                 ((fa-char-upcasep (aref prefix 0))
+                  (lambda(x) (eq 0 (cl-search prefix (car x)))))
+                 ;; case-insensitive
+                 (t
+                  `(lambda(x) (eq 0 (cl-search ,(downcase prefix) (downcase (car x)))))))))
+    (filter pred tmembers)))
+
+(defun moo-complete-candidates-1 (prefix)
+  (let ((candidates-1 (semantic-analyze-possible-completions
+                       (semantic-analyze-current-context (point))))
+        (candidates-2 (and (featurep 'semantic/db)
+                           (semanticdb-minor-mode-p)
+                           (ignore-errors
+                             (semanticdb-fast-strip-find-results
+                              (semanticdb-deep-find-tags-for-completion prefix))))))
+    (append candidates-1 candidates-2)))
+
 ;; this is similar to stype->tag
 ;; I should refactor this
 (defun moo-complete-type-member (var-tag)
@@ -1019,11 +1022,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                           (moo-tag-at-point (car ctxt-type)))))
                     ;; global function call
                     ((moo-functionp ctxt-type)
-                     (let ((prototype-flag-p
-                            (semantic-tag-get-attribute ctxt-type :prototype-flag))
-                           (tag-end (moo-tget-end-position ctxt-type)))
-                       (if (and prototype-flag-p
-                               (and tag-end (< (point) tag-end)))
+                     (let ((tag-end (moo-tget-end-position ctxt-type)))
+                       (if (and (moo-prototype-flag-p ctxt-type)
+                                (and tag-end (< (point) tag-end)))
                            (or (progn
                                  (fa-backward-char-skip<>)
                                  (moo-tget-constructors (moo-ctxt-type)))
@@ -1138,8 +1139,8 @@ This includes the constructors of types with name STR."
                (or (moo-tag-at-point ctxt) ctxt))
               ;; check if variable constructor initialization is mistaken
               ;; for function prototype definition:
-              ((and (eq (nth 1 ctxt) 'function)
-                    (semantic-tag-get-attribute ctxt :prototype-flag)
+              ((and (moo-functionp ctxt)
+                    (moo-prototype-flag-p ctxt)
                     (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
                       (and arg1 (stringp arg1) (string= arg1 ""))))
                (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
