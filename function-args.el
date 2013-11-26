@@ -214,7 +214,7 @@
                         (moo-sname->tag var-name)))
                       ;; Type::member
                       ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
-                       (if (semantic-tag-of-class-p var-tag 'function)
+                       (if (moo-functionp var-tag)
                            (moo-sname->tag var-name)
                          var-tag))
                       (var-used-as-pointer-p
@@ -229,9 +229,9 @@
                            (moo-stype->tag (caar type-template)))))
                       ;; otherwise just get its type
                       (t
-                       (cond ((semantic-tag-of-class-p var-tag 'type)
+                       (cond ((moo-typep var-tag)
                               var-tag)
-                             ((semantic-tag-of-class-p var-tag 'variable)
+                             ((moo-variablep var-tag)
                               (moo-tvar->ttype var-tag))
                              (t (error "unexpected")))))))
          (pred (cond
@@ -467,7 +467,7 @@
               (moo-get-member-functions type)))))))
 
 (defun moo-tget-enum-members (tag)
-  (let ((stag (and (semantic-tag-of-class-p tag 'type)
+  (let ((stag (and (moo-typep tag)
                    (semantic-tag-get-attribute tag :type))))
     (and (stringp stag)
          (string= stag "enum")
@@ -904,7 +904,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
           (filter (lambda(x)
                     (and (not (semantic-tag-get-attribute x :prototype))
                          (if predicate (funcall predicate x) t)
-                         (or (not (semantic-tag-of-class-p x 'variable))
+                         (or (not (moo-variablep x))
                              (equal class-name
                                     (save-excursion
                                       (goto-char (moo-tget-beginning-position x))
@@ -939,7 +939,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
          (filtered-matches
           (filter (lambda(x)
                     (and (not (semantic-tag-get-attribute x :prototype))
-                         (semantic-tag-of-class-p x 'type)))
+                         (moo-typep x)))
                   matches)))
     (cond
       ;; fall back to semantic
@@ -1002,19 +1002,19 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   ((and (semantic-tag-p ctxt-type)
                    (cond
                     ;; variable init inside constructor
-                    ((and (semantic-tag-of-class-p ctxt-type 'variable)
-                               (looking-back ":[^;]*"))
-                         (moo-tget-constructors (moo-sname->tag (car function))))
+                    ((and (moo-variablep ctxt-type)
+                          (looking-back ":[^;]*"))
+                     (moo-tget-constructors (moo-sname->tag (car function))))
                     ;; parent class init inside constructor
                     ;; or constructor as part of expression
-                    ((semantic-tag-of-class-p ctxt-type 'type)
+                    ((moo-typep ctxt-type)
                      (or (moo-tget-constructors ctxt-type)
                          (moo-tget-constructors
                           (moo-tvar->ttype (car (moo-desperately-find-sname (car function)))))
                          (moo-tget-constructors
                           (moo-tag-at-point (car ctxt-type)))))
                     ;; global function call
-                    ((semantic-tag-of-class-p ctxt-type 'function)
+                    ((moo-functionp ctxt-type)
                      (let ((prototype-flag-p
                             (semantic-tag-get-attribute ctxt-type :prototype-flag))
                            (tag-end (moo-tget-end-position ctxt-type)))
@@ -1078,7 +1078,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   ;; rest
                   (t
                    ;; get variable's type
-                   (when (semantic-tag-of-class-p ctxt-type 'variable)
+                   (when (moo-variablep ctxt-type)
                      (setq ctxt-type (moo-stype->tag (car ctype))))
                    (fa-process (cadr function) ctxt-type)))))))))
     (or (mapcar #'fa-tfunction->fal result)
@@ -1093,13 +1093,13 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 (defun fa-process-tag-according-to-class (tag)
   "TTAGS is a list of tags with the same name.
 Reduce them to functions only"
-  (cond ((semantic-tag-of-class-p tag 'function)
+  (cond ((moo-functionp tag)
          (list tag))
-        ((semantic-tag-of-class-p tag 'type)
+        ((moo-typep tag)
          (moo-tget-constructors
           ;; (moo-dereference-typedef tag scope
           tag))
-        ((semantic-tag-of-class-p tag 'variable)
+        ((moo-variablep tag)
          nil)
         (t nil)))
 
@@ -1162,13 +1162,13 @@ This includes the constructors of types with name STR."
 
 (defun moo-get-member-functions (ttype)
   (cond
-   ((semantic-tag-of-class-p ttype 'type)
-    (filter (lambda(tag) (semantic-tag-of-class-p tag 'function))
-            (moo-ttype->tmembers ttype)))
-   ((semantic-tag-of-class-p ttype 'variable)
-    (moo-get-member-functions
-     (moo-stype->tag
-      (car (semantic-tag-get-attribute ttype :type)))))))
+    ((moo-typep ttype)
+     (filter #'moo-functionp
+             (moo-ttype->tmembers ttype)))
+    ((moo-variablep ttype)
+     (moo-get-member-functions
+      (moo-stype->tag
+       (car (semantic-tag-get-attribute ttype :type)))))))
 
 (defun moo-navigate-members (tag)
   (let ((typedef (semantic-tag-get-attribute tag :typedef)))
@@ -1245,7 +1245,7 @@ This includes the constructors of types with name STR."
    (lambda (tag)
      (if (string= (car tag) sname)
          (list tag)
-       (and (or (moo-namespacep tag) (semantic-tag-of-class-p tag 'type))
+       (and (or (moo-namespacep tag) (moo-typep tag))
             (moo-get-tag-by-name
              sname
              (semantic-tag-get-attribute tag :members)))))
@@ -1254,7 +1254,7 @@ This includes the constructors of types with name STR."
 (defun moo-desperately-find-sname (stag)
   (let* ((file-tags (semantic-fetch-tags))
          (own-tags (moo-get-tag-by-name stag file-tags))
-         (include-tags (filter (lambda (tag) (semantic-tag-of-class-p tag 'include))
+         (include-tags (filter (lambda (tag) (moo-includep tag))
                                file-tags))
          (include-filenames (delq nil (mapcar #'semantic-dependency-tag-file include-tags))))
     (apply #'append
