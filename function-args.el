@@ -217,90 +217,90 @@
       (goto-char
        (cdr tag)))))
 
+(defun moo-complete-candidates-2 (prefix var-name)
+  (let* ((var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
+         (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
+         (var-tag (moo-tag-at-point var-name))
+         (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
+         (tmembers (moo-ttype->tmembers
+                    (cond
+                      (var-used-as-classvar-p
+                       (or
+                        ;; semantic may think it's a function
+                        (moo-complete-type-member var-tag)
+                        ;; this works sometimes
+                        (moo-sname->tag var-name)))
+                      ;; Type::member
+                      ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
+                       (if (semantic-tag-of-class-p var-tag 'function)
+                           (moo-sname->tag var-name)
+                         var-tag))
+                      (var-used-as-pointer-p
+                       ;; is it a usual pointer or a smart pointer?
+                       (if var-pointer-p
+                           (moo-complete-type-member var-tag)
+                         (let ((type-template (semantic-tag-get-attribute
+                                               (semantic-tag-get-attribute var-tag :type)
+                                               :template-specifier)))
+                           ;; assume that the first template parameter is the relevant one
+                           ;; (normally, there should be only one anyway)
+                           (moo-stype->tag (caar type-template)))))
+                      ;; otherwise just get its type
+                      (t
+                       (cond ((semantic-tag-of-class-p var-tag 'type)
+                              var-tag)
+                             ((semantic-tag-of-class-p var-tag 'variable)
+                              (moo-tvar->ttype var-tag))
+                             (t (error "unexpected")))))))
+         (pred (cond
+                 ((= (length prefix) 0)
+                  #'identity)
+                 ;; wildcard
+                 ((eq ?_ (aref prefix 0))
+                  `(lambda(x) (cl-search ,(substring prefix 1) (downcase (car x)))))
+                 ;; case-sensitive
+                 ((fa-char-upcasep (aref prefix 0))
+                  (lambda(x) (eq 0 (cl-search prefix (car x)))))
+                 ;; case-insensitive
+                 (t
+                  `(lambda(x) (eq 0 (cl-search ,(downcase prefix) (downcase (car x)))))))))
+    (filter pred tmembers)))
+
+(defun moo-complete-candidates-1 (prefix)
+  (let ((candidates-1 (semantic-analyze-possible-completions
+                       (semantic-analyze-current-context (point))))
+        (candidates-2 (and (featurep 'semantic/db)
+                           (semanticdb-minor-mode-p)
+                           (ignore-errors
+                             (semanticdb-fast-strip-find-results
+                              (semanticdb-deep-find-tags-for-completion prefix))))))
+    (append candidates-1 candidates-2)))
+
 
 (defun moo-complete (arg)
-  "Complete current C++ symbol at POS."
+  "Complete current C++ symbol at point."
   (interactive "P")
-  (when (semantic-active-p)
-    (let ((pos (point))
-          (symbol (moo-ctxt-current-symbol)))
-      (cond
-        ;; ———  ———————————————————————————————————————————————————————————————————————
-        ((= (length symbol) 2)
-         ;; either var.mem or var->mem
-         (let ((var-name (car symbol))
-               (mem-name (cadr symbol))
-               (var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
-               (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")))
-           (let* ((var-tag (moo-tag-at-point var-name))
-                  (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
-                  (tmembers (moo-ttype->tmembers
-                             (cond
-                               (var-used-as-classvar-p
-                                (or
-                                 ;; semantic may think it's a function
-                                 (moo-complete-type-member var-tag)
-                                 ;; this works sometimes
-                                 (moo-sname->tag var-name)))
-                               ;; Type::member
-                               ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
-                                (if (semantic-tag-of-class-p var-tag 'function)
-                                    (moo-sname->tag var-name)
-                                  var-tag))
-                               (var-used-as-pointer-p
-                                ;; is it a usual pointer or a smart pointer?
-                                (if var-pointer-p
-                                    (moo-complete-type-member var-tag)
-                                  (let ((type-template (semantic-tag-get-attribute
-                                                        (semantic-tag-get-attribute var-tag :type)
-                                                        :template-specifier)))
-                                    ;; assume that the first template parameter is the relevant one
-                                    ;; (normally, there should be only one anyway)
-                                    (moo-stype->tag (caar type-template)))))
-                               ;; otherwise just get its type
-                               (t
-                                (cond ((semantic-tag-of-class-p var-tag 'type)
-                                       var-tag)
-                                      ((semantic-tag-of-class-p var-tag 'variable)
-                                       (moo-tvar->ttype var-tag))
-                                      (t (error "unexpected")))))))
-                  (pred (cond
-                          ((= (length mem-name) 0)
-                           #'identity)
-                          ;; wildcard
-                          ((eq ?_ (aref mem-name 0))
-                           `(lambda(x) (cl-search ,(substring mem-name 1) (downcase (car x)))))
-                          ;; case-sensitive
-                          ((fa-char-upcasep (aref mem-name 0))
-                           (lambda(x) (eq 0 (cl-search mem-name (car x)))))
-                          ;; case-insensitive
-                          (t
-                           `(lambda(x) (eq 0 (cl-search ,(downcase mem-name) (downcase (car x))))))))
-                  (candidates (cl-delete-duplicates
-                               (filter pred tmembers)
-                               :test #'moo-tag=)))
-             (moo-handle-completion mem-name candidates))))
-        ;; ———  ————————————————————————————————————————————————————————————————————————
-        ((= (length symbol) 1)
-         (let* ((sym-name (car symbol))
-                (candidates-1 (semantic-analyze-possible-completions
-                               (semantic-analyze-current-context pos)))
-                (candidates-2 (and (featurep 'semantic/db)
-                                   (semanticdb-minor-mode-p)
-                                   (ignore-errors
-                                     (semanticdb-fast-strip-find-results
-                                      (semanticdb-deep-find-tags-for-completion sym-name)))))
-                (candidates
-                 (cl-delete-duplicates
-                  (append candidates-1 candidates-2)
-                  :test #'moo-tag=)))
-           (moo-handle-completion sym-name
-                                  (if arg
-                                      (moo-filter-tag-by-class 'variable candidates)
-                                    candidates))))
-        ;; ———  ———————————————————————————————————————————————————————————————————————
-        (t
-         (semantic-ia-complete-symbol pos))))))
+  (let ((symbol (moo-ctxt-current-symbol))
+        prefix candidates)
+    (if (cond
+          ;; ———  ————————————————————————————————————————————————————————————————————
+          ((= (length symbol) 2)
+           ;; either var.prefix or var->prefix
+           (setq prefix (cadr symbol))
+           (setq candidates (moo-complete-candidates-2 prefix (car symbol))))
+          ;; ———  ————————————————————————————————————————————————————————————————————
+          ((= (length symbol) 1)
+           (setq prefix (car symbol))
+           (setq candidates (moo-complete-candidates-1 prefix))
+           (if arg
+               (setq candidates
+                     (moo-filter-tag-by-class 'variable candidates))
+             t)))
+        (moo-handle-completion
+         prefix
+         (cl-delete-duplicates candidates :test #'moo-tag=))
+      ;; ———  ————————————————————————————————————————————————————————————————————————
+      (semantic-ia-complete-symbol (point)))))
 
 (defun moo-propose-virtual (arg)
   "Call `moo-propose' for virtual functions."
