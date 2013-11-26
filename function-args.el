@@ -499,52 +499,30 @@ WSPACE is the padding."
               type-p
               arguments-p
               constant-flag-p
-              prototype-flag-p
               typemodifiers-p
-              pointer-p
               constructor-flag-p
-              operator-flag-p
-              parent-p
               pointer-p
-              destructor-flag-p
-              pure-virtual-flag-p
               template-specifier-p
-              filename-p
-              throws-p
               item)
           (while r
             (setq item (pop r))
             (case item
-              (:template
-               (setq template-p (pop r)))
-              (:type
-               (setq type-p (pop r)))
-              (:arguments
-               (setq arguments-p (pop r)))
-              (:prototype-flag
-               (setq prototype-flag-p (pop r)))
-              (:constant-flag
-               (setq constant-flag-p (pop r)))
-              (:typemodifiers           ;what's this?
-               (setq typemodifiers-p (pop r)))
-              (:constructor-flag
-               (setq constructor-flag-p (pop r)))
-              (:parent
-               (setq parent-p (pop r)))
-              (:operator-flag
-               (setq operator-flag-p (pop r)))
-              (:destructor-flag
-               (setq destructor-flag-p (pop r)))
-              (:pointer
-               (setq pointer-p (pop r)))
-              (:pure-virtual-flag
-               (setq pure-virtual-flag-p (pop r)))
-              (:template-specifier
-               (setq template-specifier-p (pop r)))
-              (:throws
-               (setq throws-p (pop r)))
-              (:filename
-               (setq filename-p (pop r)))
+              (:template           (setq template-p           (pop r)))
+              (:type               (setq type-p               (pop r)))
+              (:arguments          (setq arguments-p          (pop r)))
+              (:constant-flag      (setq constant-flag-p      (pop r)))
+              (:typemodifiers      (setq typemodifiers-p      (pop r)))
+              (:constructor-flag   (setq constructor-flag-p   (pop r)))
+              (:pointer            (setq pointer-p            (pop r)))
+              (:template-specifier (setq template-specifier-p (pop r)))
+              ((:prototype-flag
+                :parent
+                :operator-flag
+                :destructor-flag
+                :pure-virtual-flag
+                :throws
+                :filename)
+               (pop r))
               (t (error (concat "fa-tfunction->fal unknown token" (prin1-to-string item))))))
           (let ((argument-conses (mapcar
                                   #'fa-tvar->cons
@@ -561,8 +539,7 @@ WSPACE is the padding."
                          (if type-p
                              (fa-ttype->str type-p)
                            "?"))
-                       (cons filename
-                             position))
+                       (cons filename position))
                  ;; arguments part
                  argument-conses)
               ;; ——— output a string instead —————————————————————————————————————————————
