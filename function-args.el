@@ -1047,11 +1047,10 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                  ;; array or map of objects or operator []
                  ;; function can be called with either . or -> or operator ()
                  ((looking-at "]")
-                  (forward-char)
-                  (backward-list)
-                  (error "[]-> or []. not implemented yet")
-                  ;; do something
-                  )
+                  (search-forward "(")
+                  (backward-char 2)
+                  (moo-complete-candidates-2 (cadr function) (car function)))
+
                  ((looking-at ">")
                   (forward-char)
                   (fa-backward-char-skip<>)))
