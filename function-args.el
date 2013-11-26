@@ -1171,6 +1171,21 @@ This includes the constructors of types with name STR."
       (moo-stype->tag
        (car (semantic-tag-get-attribute ttype :type)))))))
 
+(defun moo-dereference-typedef (tag)
+  "When TAG is a typedef, dereference it.
+Returns TAG if it's not a typedef."
+  (let ((typedef-p (moo-typedefp tag)))
+    (if (null typedef-p)
+        tag
+      (let ((defs (filter `(lambda (x) (and (eq (cadr x) 'type)
+                                       (string= (car x) ,typedef-p)))
+                          (semantic-tag-get-attribute
+                           (moo-tget-scope tag) :members))))
+        (case (length defs)
+          (1 (car defs))
+          (0 (cons (car tag) (cdr typedef-p)))
+          (t (error "typedef has multiple definitions")))))))
+
 (defun moo-navigate-members (tag)
   (let ((typedef (semantic-tag-get-attribute tag :typedef)))
     (if typedef
@@ -1214,21 +1229,6 @@ This includes the constructors of types with name STR."
                 var-tag
                 (semantic-calculate-scope (point)))))
         (car (moo-desperately-find-sname str-name)))))
-
-(defun moo-dereference-typedef (tag)
-  "if tag is a typedef, search for it in scope."
-  (let ((typedef-p (moo-typedefp tag))
-        (scope (moo-tget-scope tag))
-        defs)
-    (if (null typedef-p)
-        tag
-      (setq defs (filter `(lambda (x) (and (eq (cadr x) 'type)
-                                      (string= (car x) ,(car typedef-p))))
-                         (semantic-tag-get-attribute scope :members)))
-      (case (length defs)
-        (1 (car defs))
-        (0 (cons (car tag) (cdr typedef-p)))
-        (t (error "typedef has multiple definitions"))))))
 
 (defun moo-tvar->ttype (var-tag)
   (let* ((var-name (car var-tag))
