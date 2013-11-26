@@ -315,7 +315,7 @@ When ARG is not nil offer only variables as candidates."
   (semantic-tag-get-attribute tag :prototype-flag))
 
 ;; ——— Comparers —————————————————————————————————————————————————————————————————————
-(defun test-with (pred x1 x2)
+(defun fa-test-with (pred x1 x2)
   "Return (equal (PRED X1) (PRED X2))."
   (equal (funcall pred x1)
          (funcall pred x2)))
@@ -324,10 +324,10 @@ When ARG is not nil offer only variables as candidates."
   "Return t if variable tags V1 and V2 are equivalent."
   (and (moo-variablep v1)
        (moo-variablep v2)
-       (test-with #'car v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
-       (test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
+       (fa-test-with #'car v1 v2)
+       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
+       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
+       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
 
 (defun moo-function= (f1 f2)
   "Return t if function tags F1 and F2 are equivalent."
@@ -712,14 +712,6 @@ Return non-nil if it was updated."
     (when (fa-update-arg)
       (fa-do-show))))
 
-(defun erase-string (str)
-  "Ensure `looking-back' STR and erase it.
-`case-fold-search' is set to nil."
-  (let ((case-fold-search nil))
-    (if (looking-back str)
-        (delete-region (match-beginning 0) (match-end 0))
-      (error "Can't erase %s" str))))
-
 (defun fa-backward-char-skip<> (&optional arg)
   "Move point backward until [A-Za-z_0-9] is encountered.
 Skips anything between matching <...>.
@@ -741,6 +733,16 @@ Reverse direction when ARG is not nil."
                 ((= (char-after) char-dec)
                  (cl-decf n)))))
         (backward-char dir)))))
+
+(defun moo-erase-string (str)
+  "Ensure `looking-back' STR and erase it.
+`case-fold-search' is set to nil."
+  (let ((case-fold-search nil))
+    (if (looking-back str)
+        (delete-region (match-beginning 0) (match-end 0))
+      (error "Can't erase %s" str))))
+
+
 
 (defun moo-handle-completion (prefix candidates &optional formatter)
   "Select tag that starting with PREFIX from CANDIDATES.
@@ -787,7 +789,7 @@ The default FORMATTER is `moo-tag->cons'."
 
 (defun moo-action-insert (candidate &optional prefix)
   (when prefix
-    (erase-string prefix))
+    (moo-erase-string prefix))
   (insert candidate))
 
 (defun moo-action-jump (tag)
