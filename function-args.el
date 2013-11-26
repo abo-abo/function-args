@@ -726,21 +726,20 @@ Return non-nil if it was updated."
            (fa-abort)))))
 
 (defun fa-after-change (beg end len)
-  (let ((info (format "b=%d, e=%d l=%d; fb=%d, fe=%d, point= %d" beg end len fa-beg-pos fa-end-pos (point))))
-    (if (or (< beg fa-beg-pos)
-            (> beg fa-end-pos))       ; out of range, abort
-        ;; work around for when auto-complete-mode is active
-        (unless (and (fboundp 'auto-complete-mode) auto-complete-mode
-                     (or (and (featurep 'auto-complete) ac-menu)
-                         (> (- end beg) 1)))
-          (fa-abort))
-      (cond
-       ((eq len 0)                      ; insertion
-        (cl-incf fa-end-pos (- end beg)))
-       ((eq beg end)                    ; deletion
-        (decf fa-end-pos len)))
-      (when (fa-update-arg)
-      (fa-do-show)))))
+  (if (or (< beg fa-beg-pos)
+          (> beg fa-end-pos))           ; out of range, abort
+      ;; work around for when auto-complete-mode is active
+      (unless (and (fboundp 'auto-complete-mode) auto-complete-mode
+                   (or (and (featurep 'auto-complete) ac-menu)
+                       (> (- end beg) 1)))
+        (fa-abort))
+    (cond
+      ((eq len 0)                       ; insertion
+       (cl-incf fa-end-pos (- end beg)))
+      ((eq beg end)                     ; deletion
+       (decf fa-end-pos len)))
+    (when (fa-update-arg)
+      (fa-do-show))))
 
 (defun erase-string (str)
   "Ensure `looking-back' STR and erase it.
