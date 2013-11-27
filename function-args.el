@@ -777,7 +777,10 @@ The default FORMATTER is `moo-tag->cons'."
      (let* ((completion-ignore-case (string= prefix (downcase prefix)))
             (tc (try-completion (or prefix "") candidates)))
        (if (and (stringp tc) (not (string= tc (or prefix ""))))
-           (moo-action-insert tc prefix)
+           (progn
+             (moo-action-insert tc prefix)
+             (unless (moo-filter-tag-by-name tc candidates)
+               (moo-complete nil)))
          (moo-select-candidate
           (mapcar (or formatter #'moo-tag->cons)
                   candidates)
