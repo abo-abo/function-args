@@ -780,7 +780,7 @@ The default FORMATTER is `moo-tag->cons'."
            (progn
              (moo-action-insert tc prefix)
              (unless (moo-filter-tag-by-name tc candidates)
-               (moo-complete nil)))
+               (moo-handle-completion tc candidates formatter)))
          (moo-select-candidate
           (mapcar (or formatter #'moo-tag->cons)
                   candidates)
