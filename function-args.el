@@ -1011,16 +1011,14 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                                  (moo-tag-at-point (car ctxt-type)))))
                            ;; global function call
                            ((moo-functionp ctxt-type)
-                            (let ((tag-end (moo-tget-end-position ctxt-type)))
-                              (if (and (moo-prototype-flag-p ctxt-type)
-                                       (and tag-end (< (point) tag-end)))
-                                  (or (progn
-                                        (fa-backward-char-skip<>)
-                                        (moo-tget-constructors (moo-ctxt-type)))
-                                      (list ctxt-type))
-                                ;; should remove duplicates here
-                                (append (list ctxt-type)
-                                        (moo-desperately-find-sname (car function)))))))))
+                            (if (moo-prototype-flag-p ctxt-type)
+                                (or (progn
+                                      (fa-backward-char-skip<>)
+                                      (moo-tget-constructors (moo-ctxt-type)))
+                                    (list ctxt-type))
+                              ;; should remove duplicates here
+                              (append (list ctxt-type)
+                                      (moo-desperately-find-sname (car function))))))))
                    ;; global function invocation
                    ((looking-back "\\(:?}\\|else\\|;\\|{\\|\\(:?//.*\\)\\)[ \t\n]*")
                     (cl-mapcan #'fa-process-tag-according-to-class
