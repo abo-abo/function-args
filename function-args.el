@@ -342,10 +342,8 @@ When ARG is not nil offer only variables as candidates."
   (and (moo-functionp f1)
        (moo-functionp f2)
        (string= (car f1) (car f2))
-       (equal (semantic-tag-get-attribute f1 :typemodifiers)
-              (semantic-tag-get-attribute f2 :typemodifiers))
-       (equal (semantic-tag-get-attribute f1 :type)
-              (semantic-tag-get-attribute f2 :type))
+       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :typemodifiers)) f1 f2)
+       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :type)) f1 f2)
        (cl-every #'identity
                  (cl-mapcar #'moo-variable=
                             (semantic-tag-get-attribute f1 :arguments)
