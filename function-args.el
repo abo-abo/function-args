@@ -198,7 +198,6 @@
       (goto-char
        (cdr tag)))))
 
-
 (defun moo-complete (arg)
   "Complete current C++ symbol at point.
 When ARG is not nil offer only variables as candidates."
@@ -763,8 +762,6 @@ Reverse direction when ARG is not nil."
         (delete-region (match-beginning 0) (match-end 0))
       (error "Can't erase %s" str))))
 
-
-
 (defun moo-handle-completion (prefix candidates &optional formatter)
   "Select tag that starting with PREFIX from CANDIDATES.
 FORMATTER is used to convert tag to string.
@@ -895,7 +892,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 (defun moo-complete-candidates-2 (prefix var-name)
   (let* ((var-used-as-pointer-p (looking-back "->\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
          (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
-         (var-tag (moo-tag-at-point var-name))
+         (var-tag (if (looking-back (concat "::" prefix))
+                      (moo-ctxt-type)
+                    (moo-tag-at-point var-name)))
          (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
          (tmembers (moo-ttype->tmembers
                     (cond
