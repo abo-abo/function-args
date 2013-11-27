@@ -1054,7 +1054,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                  (cond
                    ((looking-back "::")
                     (cl-delete-duplicates
-                     (append             ; a lot of time both are the same
+                     (append
                       (fa-process (cadr function)
                                   ctxt-type)
                       (cl-mapcan
@@ -1081,10 +1081,8 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
         ;; fall back to semantic
         (let ((fntag (semantic-analyze-find-tag-sequence
                       function (semantic-calculate-scope (point)))))
-          (and fntag
-               (not (stringp (car (last fntag))))
-               (setq fntag (car (last fntag)))
-               (list (fa-tfunction->fal fntag)))))))
+          (unless (stringp (setq fntag (car (last fntag))))
+            (list (fa-tfunction->fal fntag)))))))
 
 (defun fa-process-tag-according-to-class (tag)
   "Coerse TAG to list of functions with same name."
