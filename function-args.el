@@ -360,8 +360,7 @@ When ARG is not nil offer only variables as candidates."
 
 (defun moo-tag-pos= (tag1 tag2)
   "Return t if positions of TAG1 and TAG2 are equal."
-  (and (equal (moo-tget-beginning-position tag1)
-              (moo-tget-beginning-position tag2))
+  (and (fa-test-with #'moo-tget-beginning-position tag1 tag2)
        (let ((fname1 (moo-tget-filename tag1))
              (fname2 (moo-tget-filename tag2)))
          ;; normally all tags should have fname, but some don't
