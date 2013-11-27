@@ -891,7 +891,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
          (var-used-as-classvar-p (looking-back "\\.\\(?:[A-Za-z][A-Za-z_0-9]*\\)?"))
          (var-tag (if (looking-back (concat "::" prefix))
                       (save-excursion
-                        (re-search-backward ".::")
+                        (re-search-backward prefix)
+                        (backward-char 2)
+                        (fa-backward-char-skip<>)
                         (moo-ctxt-type))
                     (moo-tag-at-point var-name)))
          (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
