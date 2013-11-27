@@ -830,19 +830,28 @@ The default FORMATTER is `moo-tag->cons'."
 (defun moo-tag-at-point (str &optional predicate)
   "Find a tag with name STR that's visible near point.
 Optional PREDICATE is used to improve uniqueness of returned tag."
+  (let ((class-name (c++-get-class-name)))
+    (moo-tag-at-point-generic
+   str
+   `(lambda(x)
+      (and (not (semantic-tag-get-attribute x :prototype))
+           ,(if predicate `(,predicate x) t)
+           (or (not (moo-variablep x))
+               (equal ,class-name
+                      (save-excursion
+                        (goto-char (moo-tget-beginning-position x))
+                        (c++-get-class-name)))))))))
+
+(defun moo-type-tag-at-point (str)
+  (moo-tag-at-point-generic
+   str
+   (lambda(x) (and (not (semantic-tag-get-attribute x :prototype))
+              (moo-typep x)))))
+
+(defun moo-tag-at-point-generic (str predicate)
+  "Find a tag near point with name STR that satisfies PREDICATE."
   (let* ((matches (moo-desperately-find-sname str))
-         (class-name (c++-get-class-name))
-         ;; try to filter based on class
-         (filtered-matches
-          (filter (lambda(x)
-                    (and (not (semantic-tag-get-attribute x :prototype))
-                         (if predicate (funcall predicate x) t)
-                         (or (not (moo-variablep x))
-                             (equal class-name
-                                    (save-excursion
-                                      (goto-char (moo-tget-beginning-position x))
-                                      (c++-get-class-name))))))
-                  matches)))
+         (filtered-matches (filter predicate matches)))
     (cond
       ;; fall back to semantic
       ((null filtered-matches)
@@ -864,25 +873,6 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
               (:members
                (,@(apply #'append
                          (mapcar #'moo-ttype->tmembers matches))))))
-      (t
-       (error "Multiple definitions for %s" str)))))
-
-(defun moo-type-tag-at-point (str)
-  (let* ((matches (moo-desperately-find-sname str))
-         (filtered-matches
-          (filter (lambda(x)
-                    (and (not (semantic-tag-get-attribute x :prototype))
-                         (moo-typep x)))
-                  matches)))
-    (cond
-      ;; fall back to semantic
-      ((null filtered-matches)
-       (save-excursion
-         (search-backward str)
-         (semantic-analyze-interesting-tag
-          (semantic-analyze-current-context (point)))))
-      ((eq 1 (length filtered-matches))
-       (car filtered-matches))
       (t
        (error "Multiple definitions for %s" str)))))
 
