@@ -385,15 +385,6 @@ When ARG is not nil offer only variables as candidates."
            (aref x 0))
           (t 0))))
 
-(defun moo-tget-end-position (tag)
-  "Get TAG end position."
-  (let ((x (car (last tag))))
-    (cond ((overlayp x)
-           (overlay-end x))
-          ((arrayp x)
-           (aref x 1))
-          (t 0))))
-
 (defun moo-tget-constructors (tag)
   "Assuming TAG is a type tag, return its constructors."
   (ignore-errors
@@ -429,10 +420,6 @@ When ARG is not nil offer only variables as candidates."
   "Return members of enum TAG."
   (when (moo-enump tag)
     (semantic-tag-get-attribute tag :members)))
-
-(defun moo-tget-superclasses (tag)
-  "Return a list of superclass tags for TAG."
-  (semantic-tag-get-attribute tag :superclasses))
 
 (defun moo-tget-scope (tag)
   "Return scope part of TAG."
@@ -1196,7 +1183,7 @@ Returns TAG if it's not a typedef."
                       ;; don't inherit constructors
                       (cl-delete-if #'moo-constructorp
                                     (moo-ttype->tmembers parent-tag)))
-                    (moo-tget-superclasses ttype))))
+                    (semantic-tag-get-attribute ttype :superclasses))))
          (cands (apply #'append (cons own-members inherited-members))))
     (cl-remove-duplicates cands :test #'moo-function=)))
 
