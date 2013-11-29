@@ -217,7 +217,13 @@ When ARG is not nil offer only variables as candidates."
            (if arg
                (setq candidates
                      (moo-filter-tag-by-class 'variable candidates))
-             t)))
+             t))
+          ;; ———  ————————————————————————————————————————————————————————————————————
+          ((= (length symbol) 3)
+           (setq prefix (caddr symbol))
+           (setq candidates
+                 (moo-ttype->tmembers
+                  (car (moo-complete-candidates-2 (cadr symbol) (car symbol)))))))
         (moo-handle-completion
          prefix
          (cl-delete-duplicates candidates :test #'moo-tag=))
