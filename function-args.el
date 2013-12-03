@@ -655,7 +655,8 @@ NAME is the TAG name."
      (re-search-forward "(")
      (backward-char))
     (t
-     (error "Not inside function")))
+     (up-list)
+     (backward-list)))
   (unless (looking-back "^[ \t]*")
     (while (looking-back " ")
       (backward-char)))
