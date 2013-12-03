@@ -1002,10 +1002,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                            ;; global function call
                            ((moo-functionp ctxt-type)
                             (if (moo-prototype-flag-p ctxt-type)
-                                (or (progn
-                                      (fa-backward-char-skip<>)
-                                      (moo-tget-constructors (moo-ctxt-type)))
-                                    (list ctxt-type))
+                                (list ctxt-type)
                               ;; should remove duplicates here
                               (append (list ctxt-type)
                                       (moo-desperately-find-sname (car function))))))))
