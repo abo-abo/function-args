@@ -153,15 +153,16 @@
 (defun fa-show ()
   "Display the arguments of the closest function."
   (interactive)
-  (fa-do-position)
-  (setq fa-lst (fa-calculate))
-  (if (eq (length fa-lst) 0)
-      (message "nothing found")
-    (forward-char)
-    (setq fa-idx 0)
-    (setq fa-hint-pos (point))
-    (fa-update-arg)
-    (fa-start-tracking)))
+  (save-excursion
+    (fa-do-position)
+    (setq fa-lst (fa-calculate))
+    (if (eq (length fa-lst) 0)
+        (message "nothing found")
+      (forward-char)
+      (setq fa-idx 0)
+      (setq fa-hint-pos (point))))
+  (fa-update-arg)
+  (fa-start-tracking))
 
 (defmacro fa-idx-cycle (arg)
   "Cycle `fa-idx' by ARG and redisplay function arguments."
