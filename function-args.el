@@ -786,6 +786,7 @@ The default FORMATTER is `moo-tag->cons'."
   (case moo-select-method
     (helm
      (require 'helm)
+     (require 'helm-help)
      (helm :sources `((name . ,name)
                       (candidates . ,(mapcar
                                       (lambda(x)
