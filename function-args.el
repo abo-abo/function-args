@@ -937,7 +937,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                            (ignore-errors
                              (semanticdb-fast-strip-find-results
                               (semanticdb-deep-find-tags-for-completion prefix))))))
-    (append candidates-1 candidates-2)))
+    (cl-delete-duplicates (append candidates-1 candidates-2) :test #'moo-tag=)))
 
 ;; this is similar to stype->tag
 ;; I should refactor this
@@ -1058,7 +1058,8 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                     ;; get variable's type
                     (when (moo-variablep ctxt-type)
                       (setq ctxt-type (moo-stype->tag (car ctype))))
-                    (fa-process (cadr function) ctxt-type)))))))))
+                    (fa-process (cadr function) ctxt-type))))))))
+         (result (cl-remove-duplicates result :test #'moo-function=)))
     (or (mapcar #'fa-tfunction->fal result)
         ;; fall back to semantic
         (let ((fntag (semantic-analyze-find-tag-sequence
