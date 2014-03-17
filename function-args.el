@@ -638,8 +638,24 @@ NAME is the TAG name."
   (cons (car tag) (moo-tag->str tag)))
 
 (defun moo-tag->str (tag)
-  (or (ignore-errors (fa-tfunction->fal tag t))
-      (car tag)))
+  (let ((class (semantic-tag-class tag)))
+    (or (ignore-errors
+          (cl-case class
+            (function (fa-tfunction->fal tag t))
+            (variable (moo-tag-variable->str tag))
+            (type (moo-tag-type->str tag))
+            (t (error "Unknown tag class: %s" class)))))))
+
+(defun moo-tag-variable->str (tag)
+  (format "%s%s %s"
+          (if (semantic-tag-get-attribute tag :constant-flag)
+              (propertize "const " 'face 'font-lock-keyword-face)
+            "")
+          (moo-tag->str (semantic-tag-type tag))
+          (propertize (car tag) 'face 'font-lock-variable-name-face)))
+
+(defun moo-tag-type->str (tag)
+  (propertize (car tag) 'face 'font-lock-type-face))
 
 ;; ——— Misc non-pure —————————————————————————————————————————————————————————————————
 (defun fa-do-position ()
