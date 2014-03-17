@@ -505,10 +505,7 @@ Select bold faces when BOLD is t."
         (position (moo-tget-beginning-position tag))
         (name (pop tag))
         (name-e (pop tag)))
-    (if (eq name-e 'type)
-        (propertize name 'face 'font-lock-type-face)
-      (if (not (eq name-e 'function))
-          (error "Not a function")
+    (if (eq name-e 'function)
         (let ((r (pop tag))
               template-p
               type-p
@@ -522,13 +519,13 @@ Select bold faces when BOLD is t."
           (while r
             (setq item (pop r))
             (case item
-              (:template           (setq template-p           (pop r)))
-              (:type               (setq type-p               (pop r)))
-              (:arguments          (setq arguments-p          (pop r)))
-              (:constant-flag      (setq constant-flag-p      (pop r)))
-              (:typemodifiers      (setq typemodifiers-p      (pop r)))
-              (:constructor-flag   (setq constructor-flag-p   (pop r)))
-              (:pointer            (setq pointer-p            (pop r)))
+              (:template (setq template-p (pop r)))
+              (:type (setq type-p (pop r)))
+              (:arguments (setq arguments-p (pop r)))
+              (:constant-flag (setq constant-flag-p (pop r)))
+              (:typemodifiers (setq typemodifiers-p (pop r)))
+              (:constructor-flag (setq constructor-flag-p (pop r)))
+              (:pointer (setq pointer-p (pop r)))
               (:template-specifier (setq template-specifier-p (pop r)))
               ((:prototype-flag
                 :parent
@@ -571,7 +568,8 @@ Select bold faces when BOLD is t."
                (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
                           argument-conses
                           ", ")
-               ");"))))))))
+               ");"))))
+      (error "Not a function"))))
 
 (defun fa-throw-unless-eq (x v)
   "Return t if X equals V.
