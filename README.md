@@ -55,9 +55,12 @@ call whatever was bound to `M-j` before (usually it's `c-indent-new-comment-line
 
 ### `moo-complete`
 
-It's essentially a c++-specific version 'semantic-ia-complete-symbol.
+It's essentially a c++-specific version of `semantic-ia-complete-symbol`.
 It behaves better, because it accounts more for function overloading and inheritance.
+Also it's prettier (type parts are fontified) and faster (`helm` is used for completion).
 You can invoke it with `M-o` by default.
+
+![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-6.png)
 
 ### `moo-propose-virtual`
 
