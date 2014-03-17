@@ -480,6 +480,7 @@ WSPACE is the padding."
     (concat
      (when (> padding-length 0) (make-string padding-length ? ))
      (propertize n-string 'face 'fa-face-hint-bold)
+     " "
      fa-paren-open
      (and args (mapconcat 'identity args glue))
      fa-paren-close
