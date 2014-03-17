@@ -29,10 +29,11 @@ Put c++-mode as default for *.h files (improves parsing):
 Enable case-insensitive searching:
 
     (set-default 'semantic-case-fold t)
-    
+
 If your includes aren't located in default dirs e.g. /usr/include/ etc, then you have to do something like this:
 
     (semantic-add-system-include "~/Software/deal.II/include/" 'c++-mode)
+    (semantic-add-system-include "/usr/local/boost_1_54_0/" 'c++-mode)
 
 # Main functions
 
@@ -61,6 +62,11 @@ Also it's prettier (type parts are fontified) and faster (`helm` is used for com
 You can invoke it with `M-o` by default.
 
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-6.png)
+
+This screenshot demonstrates the compatibility between `fa-show` and `moo-complete`, as
+well as the matching power of `helm`:
+
+![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-7.png)
 
 ### `moo-propose-virtual`
 
@@ -102,6 +108,3 @@ I recommend to install it if you're having problems with the CEDET that comes wi
 
 If you're getting a completion only sometimes under the same conditions,
 try `M-x semantic-force-refresh`.
-
-
-
