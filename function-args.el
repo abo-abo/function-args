@@ -38,10 +38,7 @@
 ;;; Code:
 (require 'cl-lib)
 (eval-when-compile
-  (require 'cl)
-  (defvar c++-mode-map)
-  (defvar ac-menu)
-  (defvar auto-complete-mode))
+  (require 'cl))
 (require 'semantic/ia)
 (require 'semantic/db-find)
 
@@ -745,18 +742,17 @@ NAME is the TAG name."
       (overlay-put fa-overlay 'after-string ""))))
 
 (defun fa-after-change (beg end len)
+  ;; abort if out of range
   (if (or (< beg fa-beg-pos)
-          (> beg fa-end-pos))           ; out of range, abort
+          (> beg fa-end-pos))
       ;; work around for when auto-complete-mode is active
-      (unless (and (fboundp 'auto-complete-mode) auto-complete-mode
-                   (or (and (featurep 'auto-complete) ac-menu)
-                       (> (- end beg) 1)))
+      (unless (and (bound-and-true-p auto-complete-mode)
+                   (> (- end beg) 1))
         (fa-abort))
-    (cond
-      ((eq len 0)                       ; insertion
-       (cl-incf fa-end-pos (- end beg)))
-      ((eq beg end)                     ; deletion
-       (decf fa-end-pos len)))
+    (cond ((eq len 0)                   ; insertion
+           (cl-incf fa-end-pos (- end beg)))
+          ((eq beg end)                 ; deletion
+           (decf fa-end-pos len)))
     (fa-update-arg t)))
 
 (defun fa-backward-char-skip<> (&optional arg)
