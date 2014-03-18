@@ -44,25 +44,8 @@
   (defvar auto-complete-mode))
 (require 'semantic/ia)
 (require 'semantic/db-find)
-(semantic-mode 1)
 
-;; ——— Setup —————————————————————————————————————————————————————————————————————————
-(defun fa-config-default ()
-  "Set up default key bindings."
-  (add-hook
-   'c++-mode-hook
-   (lambda()
-     (define-key c++-mode-map (kbd "M-o") 'moo-complete)
-     (define-key c++-mode-map (kbd "M-i") 'fa-show)
-     (define-key c++-mode-map (kbd "M-n") (fa-idx-cycle 1))
-     (define-key c++-mode-map (kbd "M-h") (fa-idx-cycle -1))
-     (define-key c++-mode-map (kbd "M-u") 'fa-abort)
-     (define-key c++-mode-map (kbd "M-j") `(lambda()(interactive)
-                                             (if fa-overlay
-                                                 (fa-jump)
-                                               (,(key-binding (kbd "M-j")))))))))
-
-;; ——— Customization —————————————————————————————————————————————————————————————————
+;; ——— Customization ———————————————————————————————————————————————————————————
 (defgroup function-args nil
   "C++ function completion."
   :group 'completion
@@ -124,7 +107,43 @@
 (defconst fa-comma (propertize "," 'face 'fa-face-semi)
   "String to join arguments.")
 
-;; ——— Internal variables ————————————————————————————————————————————————————————————
+;; ——— Minor mode ——————————————————————————————————————————————————————————————
+(defvar function-args-mode-map (make-sparse-keymap))
+
+;;;###autoload
+(define-minor-mode function-args-mode
+    "Minor mode for C++ code completion bindings.
+
+\\{function-args-mode-map}"
+  :keymap function-args-mode-map
+  :group 'function-args
+  :lighter " FA"
+  (if function-args-mode
+      (semantic-mode 1)))
+
+(let ((map function-args-mode-map))
+  (define-key map (kbd "M-o") 'moo-complete)
+  (define-key map (kbd "M-i") 'fa-show)
+  (define-key map (kbd "M-n") (fa-idx-cycle 1))
+  (define-key map (kbd "M-h") (fa-idx-cycle -1))
+  (define-key map (kbd "M-u") 'fa-abort)
+  (define-key map (kbd "M-j") 'fa-jump-maybe))
+
+(defun fa-jump-maybe ()
+  "Jump to definition if `fa-show' overlay is active.
+Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
+  (interactive)
+  (if fa-overlay
+      (fa-jump)
+    (c-indent-new-comment-line)))
+
+;; ——— Setup ———————————————————————————————————————————————————————————————————
+(defun fa-config-default ()
+  "Set up default key bindings."
+  (add-hook 'c++-mode-hook
+            (lambda () (function-args-mode 1))))
+
+;; ——— Internal variables ——————————————————————————————————————————————————————
 (defvar fa-overlay nil
   "Hint overlay instance.")
 
@@ -149,7 +168,7 @@
 (defvar fa-superclasses (make-hash-table :test 'equal)
   "Stores superclasses tags.")
 
-;; ——— Interactive functions —————————————————————————————————————————————————————————
+;; ——— Interactive functions ———————————————————————————————————————————————————
 (defun fa-show ()
   "Display the arguments of the closest function."
   (interactive)
@@ -264,7 +283,7 @@ When ARG is not nil offer only variables as candidates."
   (interactive)
   (setq fa-superclasses (make-hash-table :test 'equal)))
 
-;; ——— Predicates ————————————————————————————————————————————————————————————————————
+;; ——— Predicates ——————————————————————————————————————————————————————————————
 (defmacro fa-and (&rest predicates)
   "Return a lambda that combines PREDICATES with `and'."
   `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
@@ -330,7 +349,7 @@ When ARG is not nil offer only variables as candidates."
   (and (moo-typep tag)
        (equal "enum" (semantic-tag-get-attribute tag :type))))
 
-;; ——— Comparers —————————————————————————————————————————————————————————————————————
+;; ——— Comparers ———————————————————————————————————————————————————————————————
 (defun fa-test-with (pred x1 x2)
   "Return (equal (PRED X1) (PRED X2))."
   (equal (funcall pred x1)
@@ -376,7 +395,7 @@ When ARG is not nil offer only variables as candidates."
              (null fname2)
              (equal fname1 fname2)))))
 
-;; ——— Tag getters ———————————————————————————————————————————————————————————————————
+;; ——— Tag getters —————————————————————————————————————————————————————————————
 (defun moo-tget-filename (tag)
   "Get TAG file name."
   (or (semantic--tag-get-property tag :filename)
@@ -433,7 +452,7 @@ When ARG is not nil offer only variables as candidates."
   "Return scope part of TAG."
   (caadr (cl-find-if (lambda (x) (and (listp x) (eq (car x) 'scope))) tag)))
 
-;; ——— Tag setters ———————————————————————————————————————————————————————————————————
+;; ——— Tag setters —————————————————————————————————————————————————————————————
 (defun moo-tput-filename (tag filename)
   "Set TAG's :filename property to FILENAME."
   (semantic--tag-put-property tag :filename filename))
@@ -448,7 +467,7 @@ When ARG is not nil offer only variables as candidates."
               (semantic-tag-get-attribute type :members))))
    types-list))
 
-;; ——— Pretty priting ————————————————————————————————————————————————————————————————
+;; ——— Pretty priting ——————————————————————————————————————————————————————————
 (defun fa-fancy-string (wspace)
   "Return the string that corresponds to (nth fa-idx fa-lst).
 WSPACE is the padding."
@@ -658,7 +677,7 @@ NAME is the TAG name."
 (defun moo-tag-type->str (tag)
   (propertize (car tag) 'face 'font-lock-type-face))
 
-;; ——— Misc non-pure —————————————————————————————————————————————————————————————————
+;; ——— Misc non-pure ———————————————————————————————————————————————————————————
 (defun fa-do-position ()
   "Position the cursor at the `(', which is logically closest."
   (cond
@@ -839,7 +858,7 @@ The default FORMATTER is `moo-tag->cons'."
             (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
             (moo-handle-completion "" members #'moo-tag->str)))))))
 
-;; ——— Internals —————————————————————————————————————————————————————————————————————
+;; ——— Internals ———————————————————————————————————————————————————————————————
 (defalias 'filter 'cl-remove-if-not)
 
 (defun moo-tag-at-point (str &optional predicate)
@@ -1334,4 +1353,9 @@ At least what the syntax thinks is a list."
     (buffer-substring-no-properties (point) end)))
 
 (provide 'function-args)
+
+;;; Local Variables:
+;;; outline-regexp: ";; ———"
+;;; End:
+
 ;;; function-args.el ends here
