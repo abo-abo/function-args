@@ -1400,6 +1400,15 @@ At least what the syntax thinks is a list."
           (error "Unbalanced string: %s" str)))
     str))
 
+(defun moo-get-filename ()
+  "Get filename of tag at point."
+  (let* ((ctxt (semantic-analyze-current-context))
+         (pf (and ctxt (reverse (oref ctxt prefix))))
+         (first (car pf)))
+    (and (or (semantic-tag-with-position-p first)
+             (semantic-tag-get-attribute first :line))
+         (semantic-tag-file-name first))))
+
 (provide 'function-args)
 
 ;;; Local Variables:
