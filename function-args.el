@@ -118,6 +118,15 @@
   (if function-args-mode
       (semantic-mode 1)))
 
+(defmacro fa-idx-cycle (arg)
+  "Cycle `fa-idx' by ARG and redisplay function arguments."
+  `(lambda ()
+     (interactive)
+     (setq fa-idx
+           (mod (+ fa-idx ,arg)
+                (length fa-lst)))
+     (fa-update-arg)))
+
 (let ((map function-args-mode-map))
   (define-key map (kbd "M-o") 'moo-complete)
   (define-key map (kbd "M-i") 'fa-show)
@@ -178,15 +187,6 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
         (message "nothing found")
       (fa-update-arg)
       (fa-start-tracking)))
-
-(defmacro fa-idx-cycle (arg)
-  "Cycle `fa-idx' by ARG and redisplay function arguments."
-  `(lambda ()
-     (interactive)
-     (setq fa-idx
-           (mod (+ fa-idx ,arg)
-                (length fa-lst)))
-     (fa-update-arg)))
 
 (defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
