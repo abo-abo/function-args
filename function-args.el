@@ -600,7 +600,7 @@ TYPE and NAME are strings."
   (let ((name (pop tag))
         (r (progn (pop tag)(pop tag)))
         item constant-flag-p type-p
-        reference-p pointer-p dereference-p)
+        reference-p pointer-p dereference-p default-value-p)
     (while r
       (setq item (pop r))
       (case item
@@ -609,7 +609,7 @@ TYPE and NAME are strings."
         (:reference        (setq reference-p t)     (fa-throw-unless-eq (pop r) 1))
         (:pointer          (setq pointer-p          (pop r)))
         (:dereference      (setq dereference-p      (pop r)))
-        (:default-value    (message (pop r)))
+        (:default-value    (setq default-value-p    (pop r)))
         ((:typemodifiers
           :function-pointer
           :arguments)
@@ -621,7 +621,9 @@ TYPE and NAME are strings."
                   (and pointer-p "*")
                   ;; pretty up std:: identifiers
                   (replace-regexp-in-string "^_+" "" name)
-                  (and dereference-p "[]")))))
+                  (and dereference-p "[]")
+                  (and default-value-p (format " = %s"
+                                               default-value-p))))))
 
 (defun fa-type->str (tag)
   "Return string representation of type TAG."
