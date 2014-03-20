@@ -368,10 +368,11 @@ When ARG is not nil offer only variables as candidates."
        (string= (car f1) (car f2))
        (fa-test-with (lambda(x)(semantic-tag-get-attribute x :typemodifiers)) f1 f2)
        (fa-test-with (lambda(x)(semantic-tag-get-attribute x :type)) f1 f2)
-       (cl-every #'identity
-                 (cl-mapcar #'moo-variable=
-                            (semantic-tag-get-attribute f1 :arguments)
-                            (semantic-tag-get-attribute f2 :arguments)))))
+       (let ((a1 (semantic-tag-get-attribute f1 :arguments))
+             (a2 (semantic-tag-get-attribute f2 :arguments)))
+         (and (= (length a1) (length a2))
+              (cl-every #'identity
+                        (cl-mapcar #'moo-variable= a1 a2))))))
 
 (defun moo-tag= (x1 x2)
   "Return t if tags X1 and X2 are equivalent."
