@@ -670,7 +670,7 @@ NAME is the TAG name."
           (if (semantic-tag-get-attribute tag :constant-flag)
               (propertize "const " 'face 'font-lock-keyword-face)
             "")
-          (moo-tag->str (semantic-tag-type tag))
+          (propertize (semantic-tag-type tag) 'face 'font-lock-type-face)
           (propertize (car tag) 'face 'font-lock-variable-name-face)))
 
 (defun moo-tag-type->str (tag)
