@@ -1144,7 +1144,8 @@ This includes the constructors of types with name STR."
     (let ((ctxt (semantic-analyze-current-context (point))))
       (if (null ctxt)
           (error "Nothing under cursor")
-        (setq ctxt (car (oref ctxt prefix)))
+        ;; (setq ctxt (car (oref ctxt prefix)))
+        (setq ctxt (car (reverse (oref ctxt prefix))))
         (ignore-errors
           (cond ((stringp ctxt)
                  (or (moo-tag-at-point ctxt) ctxt))
