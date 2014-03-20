@@ -208,11 +208,15 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
     (fa-abort)
     (push-mark (point) t)
     (let ((tag (nth 2 (car (nth fa-idx fa-lst)))))
-      (switch-to-buffer
-       (find-file-noselect
-        (car tag)))
-      (goto-char
-       (cdr tag)))))
+      (let ((fname (or (car tag)
+                       (save-excursion
+                         (fa-do-position)
+                         (backward-sexp)
+                         (fa-backward-char-skip<>)
+                         (moo-get-filename)))))
+        (switch-to-buffer (find-file-noselect fname))
+        (goto-char
+         (cdr tag))))))
 
 (defun moo-complete (arg)
   "Complete current C++ symbol at point.
