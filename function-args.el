@@ -1138,22 +1138,25 @@ This includes the constructors of types with name STR."
           members))
 
 (defun moo-ctxt-type ()
-  (let ((ctxt (semantic-analyze-current-context (point))))
-    (if (null ctxt)
-        (error "Nothing under cursor")
-      (setq ctxt (car (oref ctxt prefix)))
-      (ignore-errors
-        (cond ((stringp ctxt)
-               (or (moo-tag-at-point ctxt) ctxt))
-              ;; check if variable constructor initialization is mistaken
-              ;; for function prototype definition:
-              ((and (moo-functionp ctxt)
-                    (moo-prototype-flag-p ctxt)
-                    (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
-                      (and arg1 (stringp arg1) (string= arg1 ""))))
-               (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
-              (t
-               ctxt))))))
+  (save-excursion
+    (when (moo-variable-definition-p)
+      (fa-backward-char-skip<>))
+    (let ((ctxt (semantic-analyze-current-context (point))))
+      (if (null ctxt)
+          (error "Nothing under cursor")
+        (setq ctxt (car (oref ctxt prefix)))
+        (ignore-errors
+          (cond ((stringp ctxt)
+                 (or (moo-tag-at-point ctxt) ctxt))
+                ;; check if variable constructor initialization is mistaken
+                ;; for function prototype definition:
+                ((and (moo-functionp ctxt)
+                      (moo-prototype-flag-p ctxt)
+                      (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
+                        (and arg1 (stringp arg1) (string= arg1 ""))))
+                 (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
+                (t
+                 ctxt)))))))
 
 (defun moo-stype->tag (str)
   (let ((candidates
@@ -1350,6 +1353,51 @@ At least what the syntax thinks is a list."
   (let ((end (point)))
     (backward-list)
     (buffer-substring-no-properties (point) end)))
+
+(defconst moo-c++-var-name-regex "[a-zA-Z_][a-zA-Z0-9_]*")
+
+(defun moo-variable-definition-p ()
+  "Return t if \"Type |var()\"."
+  (save-excursion
+    (back-to-indentation)
+    (let ((str (buffer-substring-no-properties
+                (point)
+                (line-end-position))))
+      (catch 'br
+        (while (setq str (moo-unprefix-qualifier str))
+          (when (string-match "^ +" str)
+            (throw 'br
+              (string-match
+               (format "\\s-+%s("
+                       moo-c++-var-name-regex)
+               str))))))))
+
+(defun moo-unprefix-qualifier (str)
+  "Return STR without Type<...>:: qualifier."
+  (let (out)
+    (when (string-match moo-c++-var-name-regex str)
+      (setq out (substring str (match-end 0))))
+    (cond ((string-match "::" out)
+           (substring out 2))
+          ((string-match "<" out)
+           (moo-unprefix-template out)))))
+
+
+
+(defun moo-unprefix-template (str)
+  "Return STR without <...> prefix."
+  (if (= ?< (aref str 0))
+      (let ((N (length str))
+            (n 1)
+            (i 0))
+        (catch 'br
+          (while (and (> n 0) (< (incf i) N))
+            (cl-case (aref str i)
+              (?< (incf n))
+              (?> (when (<= (decf n) 0)
+                    (throw 'br (substring str (incf i)))))))
+          (error "Unbalanced string: %s" str)))
+    str))
 
 (provide 'function-args)
 
