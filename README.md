@@ -1,12 +1,57 @@
-# Introduction
+# function-args
 
-This package extends `c++-mode` completion provided by [CEDET][cedet] for [Emacs][emacs].
+**GNU Emacs package for showing an inline arguments hint for the C/C++ function at point**
 
-[cedet]: http://cedet.sourceforge.net/intellisense.shtml
-[emacs]: http://www.gnu.org/software/emacs/
+## What and why
 
-# Installation
+The traditional way of showing function arguments in Emacs is to show
+them in the minibuffer.  This approach *isn't optimal*, since I have
+to traverse the *whole* screen just to see the hint. After that
+traverse the *whole* screen back to *find* the cursor.
 
+Other environments such as Qt Creator and Eclipse implement the hint
+as a popup located exactly where the function call is. This is the
+behavior that `function-args` implements for [Emacs][emacs].
+
+Along the way, it fixes the problem of hints for overridden functions
+by offering to cycle though the available hints.
+
+Cursor tracking, i.e. highlighting the current argument in bold and
+disposing the popup when the point has left the arguments list, is
+implemented for change hooks only at the moment. This means that you
+have to type a char in order for the current argument to update.
+
+### [quasi-]Related completion functionality
+
+This package also extends `c++-mode` completion provided by [CEDET][cedet].
+
+This functionality is unrelated logically, but related programmatically:
+much of the same hacks on [CEDET][cedet] to get better function arguments hint
+can be used to get better symbol completion as well.
+
+## Installation
+
+### Requirements
+
+The baseline requirement is Emacs24. It's recommended if you want to quickly try the package.
+
+You can go as low as Emacs23.2 (the first version where CEDET is bundled with Emacs)
+if you don't want to install CEDET on your own. This however isn't recommended since
+C++ completion is a CPU heavy task and newer libraries are better optimized.
+
+You can get a better experience than the baseline Emacs24 by getting
+[Emacs from bzr][emacs-bzr].
+
+You might improve it by a bit more by keeping up with
+[CEDET from bzr][cedet-bzr].
+
+### Easy start
+
+It's easiest to install from [MELPA][melpa].  No further setup
+necessary to get the basic functions working: just `M-x
+function-args-mode` when you have a C/C++ file open.
+
+### Or install from here
 Clone this repository:
 
     $ cd ~/.emacs.d/
@@ -18,9 +63,7 @@ Add to `.emacs`:
     (require 'function-args)
     (fa-config-default)
 
-Also, make sure that you have CEDET installed (it's part of Emacs since 23.2, so you probably do).
-
-# Additional setup
+### Additional setup (optional)
 
 Put c++-mode as default for *.h files (improves parsing):
 
@@ -30,12 +73,19 @@ Enable case-insensitive searching:
 
     (set-default 'semantic-case-fold t)
 
-If your includes aren't located in default dirs e.g. /usr/include/ etc, then you have to do something like this:
+If your includes aren't located in default dirs e.g. /usr/include/
+etc, then you have to do something like this:
 
     (semantic-add-system-include "~/Software/deal.II/include/" 'c++-mode)
     (semantic-add-system-include "/usr/local/boost_1_54_0/" 'c++-mode)
 
-# Main functions
+You can add this to improve the parse of macro-heavy code:
+
+    (require 'semantic/bovine/c)
+    (add-to-list 'semantic-lex-c-preprocessor-symbol-file
+        "/usr/lib/gcc/x86_64-linux-gnu/4.8/include/stddef.h")
+
+## Main functions
 
 ### `fa-show`
 
@@ -70,13 +120,15 @@ well as the matching power of `helm`:
 
 ### `moo-propose-virtual`
 
-Lists the virtual members of current class' parents.
+Lists the virtual members of current class' parents. The selected
+candidate will be inserted at point.
 
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-3.png)
 
 ### `moo-propose-override`
 
-Lists all member functions of current class' parents.
+Lists all member functions of current class' parents. The selected
+candidate will be inserted at point.
 
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-2.png)
 
@@ -84,11 +136,10 @@ Lists all member functions of current class' parents.
 
 Offers to jump to any tag in current buffer.
 This function works for all modes supported by CEDET.
-It's especially convenient for elisp.
 It has a specialization for C++ that flattens namespaces.
 ![screenshot](https://raw.github.com/abo-abo/function-args/master/doc/screenshot-4.png)
 
-# Bugs
+## Bugs
 
 ### Reporting
 
@@ -99,12 +150,16 @@ with the newest Emacs like so:
 
 ### bzr CEDET
 
-The latest version of [CEDET][bzr] can sometimes give more completion candidates.
+The latest version of [CEDET][cedet-bzr] can sometimes give more completion candidates.
 I recommend to install it if you're having problems with the CEDET that comes with Emacs.
-
-[bzr]: http://cedet.sourceforge.net/bzr-repo.shtml
 
 ### Semantic refresh
 
 If you're getting a completion only sometimes under the same conditions,
 try `M-x semantic-force-refresh`.
+
+[cedet]: http://cedet.sourceforge.net/intellisense.shtml
+[cedet-bzr]: http://cedet.sourceforge.net/bzr-repo.shtml
+[emacs]: http://www.gnu.org/software/emacs/
+[emacs-bzr]: https://savannah.gnu.org/bzr/?group=emacs
+[melpa]: http://melpa.milkbox.net/
