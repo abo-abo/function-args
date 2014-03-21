@@ -26,7 +26,7 @@ have to type a char in order for the current argument to update.
 This package also extends `c++-mode` completion provided by [CEDET][cedet].
 
 This functionality is unrelated logically, but related programmatically:
-much of the same hacks on [CEDET][cedet] to get better function arguments hint
+much of the same hacks on [CEDET][cedet] to get a better function arguments hint
 can be used to get better symbol completion as well.
 
 ## Installation
@@ -50,6 +50,11 @@ You might improve it by a bit more by keeping up with
 It's easiest to install from [MELPA][melpa].  No further setup
 necessary to get the basic functions working: just `M-x
 function-args-mode` when you have a C/C++ file open.
+
+After it becomes annoying to call `function-args-mode` for each file,
+use this to do it automatically:
+
+    (fa-config-default)
 
 ### Or install from here
 Clone this repository:

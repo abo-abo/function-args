@@ -144,6 +144,7 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
     (c-indent-new-comment-line)))
 
 ;; ——— Setup ———————————————————————————————————————————————————————————————————
+;;;###autoload
 (defun fa-config-default ()
   "Set up default key bindings."
   (add-hook 'c++-mode-hook
