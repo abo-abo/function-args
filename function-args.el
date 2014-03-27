@@ -672,12 +672,15 @@ NAME is the TAG name."
             (t (error "Unknown tag class: %s" class)))))))
 
 (defun moo-tag-variable->str (tag)
-  (format "%s%s %s"
-          (if (semantic-tag-get-attribute tag :constant-flag)
-              (propertize "const " 'face 'font-lock-keyword-face)
-            "")
-          (propertize (semantic-tag-type tag) 'face 'font-lock-type-face)
-          (propertize (car tag) 'face 'font-lock-variable-name-face)))
+  (let ((type (semantic-tag-type tag)))
+    (when (consp type)
+      (setq type (car type)))
+    (format "%s%s %s"
+            (if (semantic-tag-get-attribute tag :constant-flag)
+                (propertize "const " 'face 'font-lock-keyword-face)
+              "")
+            (propertize type 'face 'font-lock-type-face)
+            (propertize (car tag) 'face 'font-lock-variable-name-face))))
 
 (defun moo-tag-type->str (tag)
   (propertize (car tag) 'face 'font-lock-type-face))
@@ -816,9 +819,9 @@ The default FORMATTER is `moo-tag->cons'."
              (unless (moo-filter-tag-by-name tc candidates)
                (moo-handle-completion tc candidates formatter)))
          (moo-select-candidate
-          (mapcar (or formatter #'moo-tag->cons)
+          (mapcar (or formatter 'moo-tag->cons)
                   candidates)
-          (lambda(x)(moo-action-insert x prefix))))))))
+          (lambda (x) (moo-action-insert x prefix))))))))
 
 (defun moo-select-candidate (candidates action &optional name)
   (unless name
@@ -843,7 +846,13 @@ The default FORMATTER is `moo-tag->cons'."
 (defun moo-action-insert (candidate &optional prefix)
   (when prefix
     (moo-erase-string prefix))
-  (insert candidate))
+  (cond ((stringp candidate)
+         (insert candidate))
+        ((and (consp candidate)
+              (stringp (car candidate)))
+         (insert (car candidate)))
+        (t
+         (error "Unexpected"))))
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
@@ -1388,8 +1397,6 @@ At least what the syntax thinks is a list."
           ((string-match "<" out)
            (moo-unprefix-template out)))))
 
-
-
 (defun moo-unprefix-template (str)
   "Return STR without <...> prefix."
   (if (= ?< (aref str 0))
@@ -1413,6 +1420,8 @@ At least what the syntax thinks is a list."
     (and (or (semantic-tag-with-position-p first)
              (semantic-tag-get-attribute first :line))
          (semantic-tag-file-name first))))
+
+
 
 (provide 'function-args)
 
