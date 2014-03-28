@@ -1389,7 +1389,7 @@ At least what the syntax thinks is a list."
 
 (defun moo-unprefix-qualifier (str)
   "Return STR without Type<...>:: qualifier."
-  (let (out)
+  (let ((out ""))
     (when (string-match moo-c++-var-name-regex str)
       (setq out (substring str (match-end 0))))
     (cond ((string-match "::" out)
