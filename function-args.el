@@ -36,6 +36,7 @@
 
 
 ;;; Code:
+;; ——— Requires ————————————————————————————————————————————————————————————————
 (require 'cl-lib)
 (require 'cc-cmds)
 (eval-when-compile
@@ -666,9 +667,12 @@ NAME is the TAG name."
   (let ((class (semantic-tag-class tag)))
     (or (ignore-errors
           (cl-case class
-            (function (fa-tfunction->fal tag t))
-            (variable (moo-tag-variable->str tag))
-            (type (moo-tag-type->str tag))
+            (function
+             (fa-tfunction->fal tag t))
+            (variable
+             (moo-tag-variable->str tag))
+            (type
+             (propertize (car tag) 'face 'font-lock-type-face))
             (t (error "Unknown tag class: %s" class)))))))
 
 (defun moo-tag-variable->str (tag)
@@ -681,9 +685,6 @@ NAME is the TAG name."
               "")
             (propertize type 'face 'font-lock-type-face)
             (propertize (car tag) 'face 'font-lock-variable-name-face))))
-
-(defun moo-tag-type->str (tag)
-  (propertize (car tag) 'face 'font-lock-type-face))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
 (defun fa-do-position ()
@@ -1422,8 +1423,6 @@ At least what the syntax thinks is a list."
     (and (or (semantic-tag-with-position-p first)
              (semantic-tag-get-attribute first :line))
          (semantic-tag-file-name first))))
-
-
 
 (provide 'function-args)
 
