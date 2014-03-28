@@ -653,9 +653,13 @@ TYPE and NAME are strings."
                         template-specifier-p)))))))
 
 (defun fa-ttemplate-specifier->str (tag)
-  (and tag (concat "<"
-                   (mapconcat (lambda(x) (replace-regexp-in-string "^_+" "" (car x))) tag ",")
-                   ">")))
+  (and tag
+       (concat "<"
+               (mapconcat
+                (lambda(x) (replace-regexp-in-string "^_+" "" (car x)))
+                tag
+                ",")
+               ">")))
 
 (defun moo-tag->cons (tag)
   "Return for TAG a cons (STR . NAME).
@@ -665,26 +669,23 @@ NAME is the TAG name."
 
 (defun moo-tag->str (tag)
   (let ((class (semantic-tag-class tag)))
-    (or (ignore-errors
-          (cl-case class
-            (function
-             (fa-tfunction->fal tag t))
-            (variable
-             (moo-tag-variable->str tag))
-            (type
-             (propertize (car tag) 'face 'font-lock-type-face))
-            (t (error "Unknown tag class: %s" class)))))))
-
-(defun moo-tag-variable->str (tag)
-  (let ((type (semantic-tag-type tag)))
-    (when (consp type)
-      (setq type (car type)))
-    (format "%s%s %s"
-            (if (semantic-tag-get-attribute tag :constant-flag)
-                (propertize "const " 'face 'font-lock-keyword-face)
-              "")
-            (propertize type 'face 'font-lock-type-face)
-            (propertize (car tag) 'face 'font-lock-variable-name-face))))
+    (ignore-errors
+      (cl-case class
+        (function
+         (fa-tfunction->fal tag t))
+        (variable
+         (let ((type (semantic-tag-type tag)))
+           (when (consp type)
+             (setq type (car type)))
+           (format "%s%s %s"
+                   (if (semantic-tag-get-attribute tag :constant-flag)
+                       (propertize "const " 'face 'font-lock-keyword-face)
+                     "")
+                   (propertize type 'face 'font-lock-type-face)
+                   (propertize (car tag) 'face 'font-lock-variable-name-face))))
+        (type
+         (propertize (car tag) 'face 'font-lock-type-face))
+        (t (error "Unknown tag class: %s" class))))))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
 (defun fa-do-position ()
