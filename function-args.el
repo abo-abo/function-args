@@ -37,6 +37,7 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'cc-cmds)
 (eval-when-compile
   (require 'cl))
 (require 'semantic/ia)
@@ -71,27 +72,27 @@
   :group 'function-args)
 
 (defface fa-face-hint
-  '((t (:background "#fff3bc" :foreground "black")))
+    '((t (:background "#fff3bc" :foreground "black")))
   "Basic hint face."
   :group 'function-args-faces)
 
 (defface fa-face-hint-bold
-  '((t (:background "#fff3bc" :bold t) ))
+    '((t (:background "#fff3bc" :bold t)))
   "Basic hint face with bold font. Bold is used to signify the current element."
   :group 'function-args-faces)
 
 (defface fa-face-type
-  '((t (:inherit 'font-lock-type-face :background "#fff3bc") ))
+    '((t (:inherit 'font-lock-type-face :background "#fff3bc")))
   "Face for displaying types."
   :group 'function-args-faces)
 
 (defface fa-face-type-bold
-  '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t) ))
+    '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t)))
   "Face for displaying types. Bold is used to signify the current element"
   :group 'function-args-faces)
 
 (defface fa-face-semi
-  '((t (:foreground "#2a00ff" :background "#fff3bc")))
+    '((t (:foreground "#2a00ff" :background "#fff3bc")))
   "Face for displaying separators."
   :group 'function-args-faces)
 
@@ -185,9 +186,9 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
     (setq fa-hint-pos (point))
     (setq fa-idx 0))
   (if (eq (length fa-lst) 0)
-        (message "nothing found")
-      (fa-update-arg)
-      (fa-start-tracking)))
+      (message "nothing found")
+    (fa-update-arg)
+    (fa-start-tracking)))
 
 (defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
@@ -275,7 +276,7 @@ When ARG is not nil offer only variables as candidates."
     (moo-select-candidate
      (if (eq major-mode 'c++-mode)
          (mapcar
-          (lambda(x)(cons x (moo-tag->str x)))
+          (lambda (x) (cons x (moo-tag->str x)))
           (moo-flatten-namepaces tags))
        tags)
      #'moo-action-jump)))
@@ -288,8 +289,8 @@ When ARG is not nil offer only variables as candidates."
 ;; ——— Predicates ——————————————————————————————————————————————————————————————
 (defmacro fa-and (&rest predicates)
   "Return a lambda that combines PREDICATES with `and'."
-  `(lambda(x)(and ,@(mapcar (lambda(y)(list y 'x))
-                       predicates))))
+  `(lambda (x) (and ,@(mapcar (lambda (y) (list y 'x))
+                         predicates))))
 
 (defun fa-char-upcasep (c)
   "Return t if C is upper case."
@@ -362,17 +363,17 @@ When ARG is not nil offer only variables as candidates."
   (and (moo-variablep v1)
        (moo-variablep v2)
        (fa-test-with #'car v1 v2)
-       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :reference)) v1 v2)
-       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :constant-flag)) v1 v2)
-       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :type)) v1 v2)))
+       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :reference)) v1 v2)
+       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :constant-flag)) v1 v2)
+       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :type)) v1 v2)))
 
 (defun moo-function= (f1 f2)
   "Return t if function tags F1 and F2 are equivalent."
   (and (moo-functionp f1)
        (moo-functionp f2)
        (string= (car f1) (car f2))
-       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :typemodifiers)) f1 f2)
-       (fa-test-with (lambda(x)(semantic-tag-get-attribute x :type)) f1 f2)
+       (fa-test-with (lambda (x) (semantic-tag-get-attribute x :typemodifiers)) f1 f2)
+       (fa-test-with (lambda (x) (semantic-tag-get-attribute x :type)) f1 f2)
        (let ((a1 (semantic-tag-get-attribute f1 :arguments))
              (a2 (semantic-tag-get-attribute f2 :arguments)))
          (and (= (length a1) (length a2))
@@ -423,8 +424,7 @@ When ARG is not nil offer only variables as candidates."
       (cond
         ;; enum
         (enump
-         `((
-            ;; name
+         `((;; name
             ,(semantic-tag-name tag)
              ;; class
             function
@@ -491,7 +491,7 @@ WSPACE is the padding."
          (glue (if (> (+ wspace str-width)
                       (min fa-max-one-line-width (frame-width)))
                    ;; each arg on its own line
-                   (concat fa-comma "\n" (make-string wspace ? ))
+                   (concat fa-comma "\n" (make-string wspace ?\ ))
                  fa-comma))
          (args (mapcar #'fa-fancy-argument
                        (cdr lst)))
@@ -500,7 +500,7 @@ WSPACE is the padding."
       (setcar args-current-cdr
               (fa-fancy-argument (nth fa-arg (cdr lst)) t)))
     (concat
-     (when (> padding-length 0) (make-string padding-length ? ))
+     (when (> padding-length 0) (make-string padding-length ?\ ))
      (propertize n-string 'face 'fa-face-hint-bold)
      " "
      fa-paren-open
@@ -604,18 +604,18 @@ Raise an error otherwise."
   "Return (TYPE . NAME) for variable TAG.
 TYPE and NAME are strings."
   (let ((name (pop tag))
-        (r (progn (pop tag)(pop tag)))
+        (r (progn (pop tag) (pop tag)))
         item constant-flag-p type-p
         reference-p pointer-p dereference-p default-value-p)
     (while r
       (setq item (pop r))
       (case item
-        (:constant-flag    (setq constant-flag-p t) (fa-throw-unless-eq (pop r) t))
-        (:type             (setq type-p             (pop r)))
-        (:reference        (setq reference-p t)     (fa-throw-unless-eq (pop r) 1))
-        (:pointer          (setq pointer-p          (pop r)))
-        (:dereference      (setq dereference-p      (pop r)))
-        (:default-value    (setq default-value-p    (pop r)))
+        (:constant-flag (setq constant-flag-p t) (fa-throw-unless-eq (pop r) t))
+        (:type (setq type-p (pop r)))
+        (:reference (setq reference-p t) (fa-throw-unless-eq (pop r) 1))
+        (:pointer (setq pointer-p (pop r)))
+        (:dereference (setq dereference-p (pop r)))
+        (:default-value (setq default-value-p (pop r)))
         ((:typemodifiers
           :function-pointer
           :arguments)
@@ -653,7 +653,7 @@ TYPE and NAME are strings."
 
 (defun fa-ttemplate-specifier->str (tag)
   (and tag (concat "<"
-                   (mapconcat (lambda(x)(replace-regexp-in-string "^_+" "" (car x))) tag ",")
+                   (mapconcat (lambda(x) (replace-regexp-in-string "^_+" "" (car x))) tag ",")
                    ">")))
 
 (defun moo-tag->cons (tag)
@@ -862,7 +862,7 @@ The default FORMATTER is `moo-tag->cons'."
 
 (defun moo-propose (pred)
   "Display a list of current class members that satisfy PRED."
-  (let ((stype (c++-get-class-name)))
+  (let ((stype (moo-c++-class-name)))
     (when stype
       (let ((ttype (moo-tag-at-point stype #'moo-typep)))
         (when ttype
@@ -877,17 +877,17 @@ The default FORMATTER is `moo-tag->cons'."
 (defun moo-tag-at-point (str &optional predicate)
   "Find a tag with name STR that's visible near point.
 Optional PREDICATE is used to improve uniqueness of returned tag."
-  (let ((class-name (c++-get-class-name)))
+  (let ((class-name (moo-c++-class-name)))
     (moo-tag-at-point-generic
-   str
-   `(lambda(x)
-      (and (not (semantic-tag-get-attribute x :prototype))
-           ,(if predicate `(,predicate x) t)
-           (or (not (moo-variablep x))
-               (equal ,class-name
-                      (save-excursion
-                        (goto-char (moo-tget-beginning-position x))
-                        (c++-get-class-name)))))))))
+     str
+     `(lambda(x)
+        (and (not (semantic-tag-get-attribute x :prototype))
+             ,(if predicate `(,predicate x) t)
+             (or (not (moo-variablep x))
+                 (equal ,class-name
+                        (save-excursion
+                          (goto-char (moo-tget-beginning-position x))
+                          (moo-c++-class-name)))))))))
 
 (defun moo-type-tag-at-point (str)
   (moo-tag-at-point-generic
@@ -1129,8 +1129,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 (defun fa-process (str ttype)
   "Get all functions with name STR from TTYPE.
 This includes the constructors of types with name STR."
-  (let (
-        ;; TODO: this fails for namespaces such as std::
+  (let (;; TODO: this fails for namespaces such as std::
         (filename (moo-tget-filename ttype)))
     (mapcar (lambda (tag) (moo-tput-filename tag filename))
             (let ((candidates (moo-filter-tag-by-name
@@ -1292,21 +1291,21 @@ Returns TAG if it's not a typedef."
 (defun moo-namespace-reduce (func tags)
   "Reduce with two-argument function FUNC the forest TAGS."
   (cl-labels ((namespace-reduce
-               (func tags out)
-               (dolist (tag tags)
-                 (cond ((or (moo-includep tag) (moo-usingp tag))
-                        ;; skip
-                        )
+                  (func tags out)
+                (dolist (tag tags)
+                  (cond ((or (moo-includep tag) (moo-usingp tag))
+                         ;; skip
+                         )
 
-                       ((moo-namespacep tag)
-                        (setq out
-                              (namespace-reduce
-                               func
-                               (semantic-tag-get-attribute tag :members)
-                               (funcall func out tag))))
+                        ((moo-namespacep tag)
+                         (setq out
+                               (namespace-reduce
+                                func
+                                (semantic-tag-get-attribute tag :members)
+                                (funcall func out tag))))
 
-                       (t (setq out (funcall func out tag)))))
-               out))
+                        (t (setq out (funcall func out tag)))))
+                out))
     (nreverse (namespace-reduce func tags nil))))
 
 (defun moo-find-sname-in-tags (stag tags)
@@ -1319,24 +1318,27 @@ Returns TAG if it's not a typedef."
   "Traverse the namespace forest TAGS and return the leafs."
   (moo-namespace-reduce (lambda(x y) (push y x)) tags))
 
-(defun c++-get-class-name ()
-  (car (c++-get-class-name-and-template)))
+(defun moo-c++-class-name ()
+  "Return current class name."
+  (car (moo-c++-class-name-and-template)))
 
-(defun c++-get-class-template ()
-  (cdr (c++-get-class-name-and-template)))
+(defun moo-c++-class-template ()
+  "Return the template of current class."
+  (cdr (moo-c++-class-name-and-template)))
 
-(defvar c++-braces-table
+(defvar moo-c++-braces-table
   (let ((table (make-char-table 'syntax-table nil)))
     (modify-syntax-entry ?{ "(}" table)
     (modify-syntax-entry ?} "){" table)
     table))
 
-(defun c++-get-class-name-and-template ()
+(defun moo-c++-class-name-and-template ()
+  "Return currrent class name and template as a cons."
   (ignore-errors
     (save-excursion
       (let (name template)
         ;; step out of the current block
-        (with-syntax-table c++-braces-table
+        (with-syntax-table moo-c++-braces-table
           (up-list)
           (backward-list))
         ;; TODO take care of nested classes
@@ -1348,7 +1350,7 @@ Returns TAG if it's not a typedef."
               ;; try to match the template as well
               (when (looking-back ">[\n \t]*")
                 (let ((end (progn (goto-char (match-beginning 0)) (point)))
-                      (beg (ignore-errors (forward-char)(backward-list)(point))))
+                      (beg (ignore-errors (forward-char) (backward-list) (point))))
                   (when end
                     (setq template (buffer-substring-no-properties (1+ beg) end))))))
           ;; we're not in class, but in a function
