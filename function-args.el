@@ -939,11 +939,12 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
          (tmembers (moo-ttype->tmembers
                     (cond
                       (var-used-as-classvar-p
-                       (or
-                        ;; semantic may think it's a function
-                        (moo-complete-type-member var-tag)
-                        ;; this works sometimes
-                        (moo-sname->tag var-name)))
+                       ;; semantic may think it's a function
+                       (let ((tag-type (moo-complete-type-member var-tag)))
+                         (if (moo-ttype->tmembers tag-type)
+                             tag-type
+                           ;; this works sometimes
+                           (moo-sname->tag var-name))))
                       ;; Type::member
                       ((looking-back "::\\(?:[A-Za-z][A-Za-z_0-9]*\\)?")
                        (if (moo-functionp var-tag)
