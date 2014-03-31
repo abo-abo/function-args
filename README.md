@@ -163,6 +163,21 @@ I recommend to install it if you're having problems with the CEDET that comes wi
 If you're getting a completion only sometimes under the same conditions,
 try `M-x semantic-force-refresh`.
 
+### `moo-complete` offers extra (false) candidates
+
+This comes into play when looking for a first level completion,
+i.e. not prefixed with `::`, `.` or `->`. Extra candidates are
+merged with correct candidates to give more completion candidates.
+This is to alleviate the problem of *no* completion candidates when
+parser becomes confused, i.e. it's better to have a few false
+candidates in one case, than none in another case.
+
+This isn't a severe bug, it rarely comes up depending on the naming style
+and the compiler finds it really quick.
+
+In any case, there's always `semantic-ia-complete-symbol` if you want
+a different behavior.
+
 [cedet]: http://cedet.sourceforge.net/intellisense.shtml
 [cedet-bzr]: http://cedet.sourceforge.net/bzr-repo.shtml
 [emacs]: http://www.gnu.org/software/emacs/
