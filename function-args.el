@@ -1215,9 +1215,10 @@ Returns TAG if it's not a typedef."
 
 (defun moo-navigate-members (tag)
   (let ((typedef (semantic-tag-get-attribute tag :typedef)))
-    (if typedef
-        (moo-sname->tag (car typedef))
-      (semantic-tag-get-attribute tag :members))))
+    (when typedef
+      (setq tag
+            (moo-sname->tag (car typedef))))
+    (semantic-tag-get-attribute tag :members)))
 
 (defun moo-ttype->tmembers (ttype)
   (let* ((own-members
