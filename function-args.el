@@ -836,13 +836,14 @@ The default FORMATTER is `moo-tag->cons'."
      (require 'helm)
      (require 'helm-help)
      (helm :sources `((name . ,name)
-                      (candidates . ,(mapcar
-                                      (lambda(x)
-                                        (if (listp x)
-                                            (if (stringp (cdr x))
-                                                (cons (cdr x) (car x))
-                                              (cons (car x) x))
-                                          x)) candidates))
+                      (candidates . ,(delq nil (mapcar
+                                                (lambda (x)
+                                                  (if (listp x)
+                                                      (if (stringp (cdr x))
+                                                          (cons (cdr x) (car x))
+                                                        (when (stringp (car x))
+                                                          (cons (car x) x)))
+                                                    x)) candidates)))
                       (action . ,action))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
