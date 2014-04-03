@@ -1304,7 +1304,7 @@ Returns TAG if it's not a typedef."
                          ;; skip
                          )
 
-                        ((moo-namespacep tag)
+                        ((or (moo-namespacep tag) (moo-typep tag))
                          (setq out
                                (namespace-reduce
                                 func
@@ -1323,7 +1323,7 @@ Returns TAG if it's not a typedef."
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
-  (moo-namespace-reduce (lambda(x y) (push y x)) tags))
+  (moo-namespace-reduce (lambda (x y) (push y x)) tags))
 
 (defun moo-c++-class-name ()
   "Return current class name."
