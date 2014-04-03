@@ -687,6 +687,7 @@ NAME is the TAG name."
                    (propertize (car tag) 'face 'font-lock-variable-name-face))))
         (type
          (propertize (car tag) 'face 'font-lock-type-face))
+        (label)
         (t (error "Unknown tag class: %s" class))))))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
