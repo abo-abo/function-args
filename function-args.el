@@ -675,8 +675,10 @@ NAME is the TAG name."
          (fa-tfunction->fal tag t))
         (variable
          (let ((type (semantic-tag-type tag)))
-           (when (consp type)
-             (setq type (car type)))
+           (cond ((consp type)
+                  (setq type (car type)))
+                 ((null type)
+                  (setq type "#define")))
            (format "%s%s %s"
                    (if (semantic-tag-get-attribute tag :constant-flag)
                        (propertize "const " 'face 'font-lock-keyword-face)
