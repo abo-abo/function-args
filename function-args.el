@@ -1344,7 +1344,7 @@ Returns TAG if it's not a typedef."
   "Return currrent class name and template as a cons."
   (ignore-errors
     (save-excursion
-      (let (name template)
+      (let (name template defun-start)
         ;; step out of the current block
         (with-syntax-table moo-c++-braces-table
           (up-list)
@@ -1363,12 +1363,16 @@ Returns TAG if it's not a typedef."
                     (setq template (buffer-substring-no-properties (1+ beg) end))))))
           ;; we're not in class, but in a function
           (beginning-of-defun)
+          (setq defun-start (point))
           (when (looking-at "template +<")
             (goto-char (1- (match-end 0)))
             (setq template (substring (moo-list-at-point) 1 -1))
             (forward-list))
           (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
-          (setq name (match-string-no-properties 1)))
+          (setq name (match-string-no-properties 1))
+          ;; check if there's a mess up
+          (when (re-search-backward "{" defun-start t)
+            (setq name)))
         (cons name template)))))
 
 (defun moo-list-at-point ()
