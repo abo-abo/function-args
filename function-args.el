@@ -938,7 +938,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                         (backward-char 2)
                         (fa-backward-char-skip<>)
                         (moo-ctxt-type))
-                    (moo-tag-at-point var-name)))
+                    (moo-tag-at-point var-name
+                                      (when var-used-as-classvar-p
+                                        'moo-variablep))))
          (var-pointer-p (semantic-tag-get-attribute var-tag :pointer))
          (tmembers (moo-ttype->tmembers
                     (cond
