@@ -757,13 +757,17 @@ NAME is the TAG name."
       (overlay-put fa-overlay 'display str)
       (overlay-put fa-overlay 'after-string ""))))
 
+(defvar ac-prefix-overlay)
+
 (defun fa-after-change (beg end len)
   ;; abort if out of range
   (if (or (< beg fa-beg-pos)
           (> beg fa-end-pos))
       ;; work around for when auto-complete-mode is active
       (unless (and (bound-and-true-p auto-complete-mode)
-                   (> (- end beg) 1))
+                   ac-prefix-overlay
+                   ;; (>= (- end beg) 1)
+                   )
         (fa-abort))
     (cond ((eq len 0)                   ; insertion
            (cl-incf fa-end-pos (- end beg)))
