@@ -930,6 +930,8 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
               (:members
                (,@(apply #'append
                          (mapcar #'moo-ttype->tmembers matches))))))
+      ((cl-every #'moo-variablep matches)
+       (car matches))
       (t
        (error "Multiple definitions for %s" str)))))
 
