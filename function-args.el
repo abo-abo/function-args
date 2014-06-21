@@ -1271,9 +1271,11 @@ Returns TAG if it's not a typedef."
 
 (defun moo-tvar->ttype (var-tag)
   (let* ((var-name (car var-tag))
-         (var-stype (car (semantic-tag-get-attribute var-tag :type)))
-         (type-tag (moo-stype->tag var-stype)))
-    (moo-dereference-typedef type-tag)))
+         (type-attr (semantic-tag-get-attribute var-tag :type)))
+    (when (consp type-attr)
+      (let* ((var-stype (car type-attr))
+             (type-tag (moo-stype->tag var-stype)))
+        (moo-dereference-typedef type-tag)))))
 
 (defun moo-get-tag-by-name (sname tlist)
   (cl-mapcan
