@@ -291,7 +291,7 @@ When ARG is not nil offer only variables as candidates."
 (defmacro fa-and (&rest predicates)
   "Return a lambda that combines PREDICATES with `and'."
   `(lambda (x) (and ,@(mapcar (lambda (y) (list y 'x))
-                         predicates))))
+                              predicates))))
 
 (defun fa-char-upcasep (c)
   "Return t if C is upper case."
@@ -364,9 +364,9 @@ When ARG is not nil offer only variables as candidates."
   (and (moo-variablep v1)
        (moo-variablep v2)
        (fa-test-with #'car v1 v2)
-       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :reference)) v1 v2)
-       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :constant-flag)) v1 v2)
-       (fa-test-with (lambda(x) (semantic-tag-get-attribute x :type)) v1 v2)))
+       (fa-test-with (lambda (x) (semantic-tag-get-attribute x :reference)) v1 v2)
+       (fa-test-with (lambda (x) (semantic-tag-get-attribute x :constant-flag)) v1 v2)
+       (fa-test-with (lambda (x) (semantic-tag-get-attribute x :type)) v1 v2)))
 
 (defun moo-function= (f1 f2)
   "Return t if function tags F1 and F2 are equivalent."
@@ -425,7 +425,7 @@ When ARG is not nil offer only variables as candidates."
       (cond
         ;; enum
         (enump
-         `((;; name
+         `(( ;; name
             ,(semantic-tag-name tag)
              ;; class
             function
@@ -464,10 +464,10 @@ When ARG is not nil offer only variables as candidates."
 (defun moo-tput-filename-to-types (types-list filename)
   "Set :filename property for members of types on TYPES-LIST to FILENAME."
   (mapcar
-   (lambda(type)
+   (lambda (type)
      (semantic-tag-put-attribute
       type :members
-      (mapcar (lambda(tag) (moo-tput-filename tag filename))
+      (mapcar (lambda (tag) (moo-tput-filename tag filename))
               (semantic-tag-get-attribute type :members))))
    types-list))
 
@@ -484,7 +484,7 @@ WSPACE is the padding."
             ""))
          (padding-length (- wspace (+ 1 (length n-string))))
          (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
-                                                    (length (cdr x))))
+                                                         (length (cdr x))))
                                           (cdr lst)))
                        (length (caar lst))
                        (length (cadar lst))
@@ -656,7 +656,7 @@ TYPE and NAME are strings."
   (and tag
        (concat "<"
                (mapconcat
-                (lambda(x) (replace-regexp-in-string "^_+" "" (car x)))
+                (lambda (x) (replace-regexp-in-string "^_+" "" (car x)))
                 tag
                 ",")
                ">")))
@@ -765,8 +765,8 @@ NAME is the TAG name."
           (> beg fa-end-pos))
       ;; work around for when auto-complete-mode is active
       (unless (and ;; (bound-and-true-p auto-complete-mode)
-                   ac-prefix-overlay
-                   (>= (- end beg) 1))
+               ac-prefix-overlay
+               (>= (- end beg) 1))
         (fa-abort))
     (cond ((eq len 0)                   ; insertion
            (cl-incf fa-end-pos (- end beg)))
@@ -889,7 +889,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
   (let ((class-name (moo-c++-class-name)))
     (moo-tag-at-point-generic
      str
-     `(lambda(x)
+     `(lambda (x)
         (and (not (semantic-tag-get-attribute x :prototype))
              ,(if predicate `(,predicate x) t)
              (or (not (moo-variablep x))
@@ -901,8 +901,8 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 (defun moo-type-tag-at-point (str)
   (moo-tag-at-point-generic
    str
-   (lambda(x) (and (not (semantic-tag-get-attribute x :prototype))
-              (moo-typep x)))))
+   (lambda (x) (and (not (semantic-tag-get-attribute x :prototype))
+                    (moo-typep x)))))
 
 (defun moo-tag-at-point-generic (str predicate)
   "Find a tag near point with name STR that satisfies PREDICATE."
@@ -1143,7 +1143,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 (defun fa-process (str ttype)
   "Get all functions with name STR from TTYPE.
 This includes the constructors of types with name STR."
-  (let (;; TODO: this fails for namespaces such as std::
+  (let ( ;; TODO: this fails for namespaces such as std::
         (filename (moo-tget-filename ttype)))
     (mapcar (lambda (tag) (moo-tput-filename tag filename))
             (let ((candidates (moo-filter-tag-by-name
@@ -1192,7 +1192,7 @@ This includes the constructors of types with name STR."
                (semantic-analyze-find-tag-sequence
                 (list str) (semantic-calculate-scope (point)) 'prefixtypes 'unfindable))
              (filter
-              (lambda(x) (and (moo-typep x) (semantic-tag-get-attribute x :members)))
+              (lambda (x) (and (moo-typep x) (semantic-tag-get-attribute x :members)))
               (moo-desperately-find-sname str)))))
     (cond ((= 0 (length candidates)))
           ((= 1 (length candidates))
@@ -1216,7 +1216,7 @@ Returns TAG if it's not a typedef."
     (if (null typedef-p)
         tag
       (let ((defs (filter `(lambda (x) (and (eq (cadr x) 'type)
-                                       (string= (car x) ,typedef-p)))
+                                            (string= (car x) ,typedef-p)))
                           (semantic-tag-get-attribute
                            (moo-tget-scope tag) :members))))
         (case (length defs)
@@ -1234,8 +1234,8 @@ Returns TAG if it's not a typedef."
 (defun moo-ttype->tmembers (ttype)
   (let* ((own-members
           (cl-delete-if (lambda (tag) (and (stringp (car tag))
-                                      (or (string= (car tag) "public")
-                                          (string= (car tag) "private"))))
+                                           (or (string= (car tag) "public")
+                                               (string= (car tag) "private"))))
                         (moo-navigate-members ttype)))
          (own-members
           (apply #'append
@@ -1328,7 +1328,7 @@ Returns TAG if it's not a typedef."
 (defun moo-find-sname-in-tags (stag tags)
   "Find tags named STAG in forest TAGS."
   (moo-namespace-reduce
-   (lambda(x y) (if (string= (car y) stag) (push y x) x))
+   (lambda (x y) (if (string= (car y) stag) (push y x) x))
    tags))
 
 (defun moo-flatten-namepaces (tags)
