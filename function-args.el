@@ -587,7 +587,7 @@ Select bold faces when BOLD is t."
                (if constructor-flag-p
                    ""
                  (if type-p
-                     (fa-type->str type-p)
+                     (propertize (fa-type->str type-p) 'face 'font-lock-type-face)
                    "?"))
                " " (propertize name 'face 'font-lock-function-name-face)
                "("
@@ -595,7 +595,7 @@ Select bold faces when BOLD is t."
                           argument-conses
                           ", ")
                ")"
-               (if methodconst-flag-p " const" "")
+               (if methodconst-flag-p (propertize " const" 'face 'font-lock-keyword-face) "")
                ";"))))
       (error "Not a function"))))
 
@@ -626,8 +626,8 @@ TYPE and NAME are strings."
           :arguments)
          (pop r))
         (t (error "Unknown token %s" item))))
-    (cons (concat (and constant-flag-p "const ")
-                  (fa-type->str type-p))
+    (cons (concat (and constant-flag-p (propertize "const " 'face 'font-lock-keyword-face))
+                  (propertize (fa-type->str type-p) 'face 'font-lock-type-face))
           (concat (and reference-p "&")
                   (and pointer-p "*")
                   ;; pretty up std:: identifiers
