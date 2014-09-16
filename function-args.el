@@ -535,6 +535,7 @@ Select bold faces when BOLD is t."
               type-p
               arguments-p
               constant-flag-p
+              methodconst-flag-p
               typemodifiers-p
               constructor-flag-p
               pointer-p
@@ -547,6 +548,7 @@ Select bold faces when BOLD is t."
               (:type (setq type-p (pop r)))
               (:arguments (setq arguments-p (pop r)))
               (:constant-flag (setq constant-flag-p (pop r)))
+              (:methodconst-flag (setq methodconst-flag-p (pop r)))
               (:typemodifiers (setq typemodifiers-p (pop r)))
               (:constructor-flag (setq constructor-flag-p (pop r)))
               (:pointer (setq pointer-p (pop r)))
@@ -592,7 +594,9 @@ Select bold faces when BOLD is t."
                (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
                           argument-conses
                           ", ")
-               ");"))))
+               ")"
+               (if methodconst-flag-p " const" "")
+               ";"))))
       (error "Not a function"))))
 
 (defun fa-throw-unless-eq (x v)
