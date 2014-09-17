@@ -177,6 +177,31 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
 (defvar fa-superclasses (make-hash-table :test 'equal)
   "Stores superclasses tags.")
 
+(defcustom fa-delay 2
+  "Number of seconds to delay before calling `fa-show'.")
+
+(defvar fa-timer nil
+  "Timer for calling `fa-show' after idling for `fa-delay' seconds.")
+
+(defvar fa-last-pos 1
+  "Last position of call to `fa-show'.")
+
+(defun fa-show-wrapper ()
+  "Wrap around `fa-show'."
+  (when (memq major-mode '(c-mode c++-mode))
+    (unless (= (point) fa-last-pos)
+      (ignore-errors (fa-show)
+                     (setq fa-last-pos (point))))))
+
+(defun fa-auto ()
+  "Toggle automatic calls to `fa-show'."
+  (interactive)
+  (if fa-timer
+      (progn
+        (cancel-timer fa-timer)
+        (setq fa-timer))
+    (setq fa-timer (run-with-idle-timer fa-delay t #'fa-show-wrapper))))
+
 ;; ——— Interactive functions ———————————————————————————————————————————————————
 (defun fa-show ()
   "Display the arguments of the closest function."
