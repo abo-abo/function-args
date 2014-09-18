@@ -120,20 +120,27 @@
   (if function-args-mode
       (semantic-mode 1)))
 
-(defmacro fa-idx-cycle (arg)
-  "Cycle `fa-idx' by ARG and redisplay function arguments."
-  `(lambda ()
-     (interactive)
-     (setq fa-idx
-           (mod (+ fa-idx ,arg)
-                (length fa-lst)))
-     (fa-update-arg)))
+(defun fa-idx-cycle-down ()
+  "Cycle `fa-idx' down and redisplay function arguments."
+  (interactive)
+  (setq fa-idx
+        (mod (+ fa-idx 1)
+             (length fa-lst)))
+  (fa-update-arg))
+
+(defun fa-idx-cycle-up ()
+  "Cycle `fa-idx' up and redisplay function arguments."
+  (interactive)
+  (setq fa-idx
+        (mod (+ fa-idx -1)
+             (length fa-lst)))
+  (fa-update-arg))
 
 (let ((map function-args-mode-map))
   (define-key map (kbd "M-o") 'moo-complete)
   (define-key map (kbd "M-i") 'fa-show)
-  (define-key map (kbd "M-n") (fa-idx-cycle 1))
-  (define-key map (kbd "M-h") (fa-idx-cycle -1))
+  (define-key map (kbd "M-n") 'fa-idx-cycle-down)
+  (define-key map (kbd "M-h") 'fa-idx-cycle-up)
   (define-key map (kbd "M-u") 'fa-abort)
   (define-key map (kbd "M-j") 'fa-jump-maybe))
 
