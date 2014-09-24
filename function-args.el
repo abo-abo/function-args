@@ -93,7 +93,7 @@
   :group 'function-args-faces)
 
 (defface fa-face-semi
-    '((t (:foreground "#2a00ff" :background "#fff3bc")))
+    '((t (:foreground "#2a00ff" :background "#fff3bc" :bold t)))
   "Face for displaying separators."
   :group 'function-args-faces)
 
@@ -524,7 +524,7 @@ WSPACE is the padding."
          (glue (if (> (+ wspace str-width)
                       (min fa-max-one-line-width (frame-width)))
                    ;; each arg on its own line
-                   (concat fa-comma "\n" (make-string wspace ?\ ))
+                   (concat fa-comma "\n" (make-string (1+ wspace) ?\ ))
                  fa-comma))
          (args (mapcar #'fa-fancy-argument
                        (cdr lst)))
