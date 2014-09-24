@@ -1087,7 +1087,15 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                            ;; variable init inside constructor
                            ((and (moo-variablep ctxt-type)
                                  (looking-back ":[^;]*"))
-                            (moo-tget-constructors (moo-sname->tag (car function))))
+                            (or (filter #'moo-constructorp
+                                        (apply #'append
+                                               (delq nil
+                                                     (mapcar
+                                                      #'moo-ttype->tmembers
+                                                      (moo-desperately-find-sname
+                                                       (car (semantic-tag-type ctxt-type)))))))
+                                (moo-tget-constructors
+                                 (moo-sname->tag (car function)))))
                            ;; parent class init inside constructor
                            ;; or constructor as part of expression
                            ((moo-typep ctxt-type)
