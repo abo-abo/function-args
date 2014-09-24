@@ -798,7 +798,8 @@ NAME is the TAG name."
       ;; work around for when auto-complete-mode is active
       (unless (and ;; (bound-and-true-p auto-complete-mode)
                ac-prefix-overlay
-               (>= (- end beg) 1))
+               ;; (>= (- end beg) 1)
+               )
         (fa-abort))
     (cond ((eq len 0)                   ; insertion
            (cl-incf fa-end-pos (- end beg)))
