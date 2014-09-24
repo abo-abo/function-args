@@ -1224,7 +1224,9 @@ This includes the constructors of types with name STR."
                       (moo-prototype-flag-p ctxt)
                       (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
                         (and arg1 (stringp arg1) (string= arg1 ""))))
-                 (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
+                 (or (ignore-errors
+                       (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
+                     (semantic-tag-get-attribute ctxt :type)))
                 (t
                  ctxt)))))))
 
