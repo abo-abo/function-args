@@ -672,21 +672,16 @@ TYPE and NAME are strings."
   "Return string representation of type TAG."
   (if (stringp tag)
       tag
-    (let ((name (pop tag))
-          (tag-class (pop tag)))
-      (if (not (eq tag-class 'type))
-          (error "Not a type")
-        (let ((rst (pop tag))
-              item
-              template-specifier-p)
-          (while rst
-            (setq item (pop rst))
-            (case item
-              (:template-specifier
-               (setq template-specifier-p (pop rst)))
-              (t (pop rst))))
-          (concat name (fa-ttemplate-specifier->str
-                        template-specifier-p)))))))
+    (let ((name (semantic-tag-name tag))
+          (template (semantic-tag-get-attribute tag :template-specifier)))
+      (if template
+          (let ((inside (mapconcat #'fa-type->str template ",")))
+            (format
+             (if (string-match ">" inside)
+                 "%s<%s >"
+               "%s<%s>")
+             name inside))
+        name))))
 
 (defun fa-ttemplate-specifier->str (tag)
   (and tag
