@@ -854,11 +854,8 @@ The default FORMATTER is `moo-tag->cons'."
     (t
      (let* ((completion-ignore-case (string= prefix (downcase prefix)))
             (tc (try-completion (or prefix "") candidates)))
-       (if (and (stringp tc) (not (string= tc (or prefix ""))))
-           (progn
-             (moo-action-insert tc prefix)
-             (unless (moo-filter-tag-by-name tc candidates)
-               (moo-handle-completion tc candidates formatter)))
+       (if (eq tc t)
+           (moo-action-insert tc prefix)
          (moo-select-candidate
           (mapcar (or formatter 'moo-tag->cons)
                   candidates)
@@ -976,6 +973,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                         (backward-char 2)
                         (fa-backward-char-skip<>)
                         (moo-ctxt-type))
+                    ;; TODO: maybe just call `moo-ctxt-type' here
                     (moo-tag-at-point var-name
                                       (when var-used-as-classvar-p
                                         'moo-variablep))))
