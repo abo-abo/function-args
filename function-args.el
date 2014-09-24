@@ -4,7 +4,7 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
-;; Version: 0.4
+;; Version: 0.5.0
 
 ;; This file is not part of GNU Emacs
 
