@@ -1393,40 +1393,49 @@ Returns TAG if it's not a typedef."
     (modify-syntax-entry ?} "){" table)
     table))
 
+(defun moo-c++-match-constructor-impl ()
+  (save-excursion
+    (let ((pt (point)))
+      (when (re-search-backward "template\\s-+<\\([^>]*\\)>[\n\t ]*\\([A-Za-z_0-9]+\\)\\(<[^>]*>\\)?::\\2" nil t)
+        (unless (string-match "{" (buffer-substring-no-properties (point) pt))
+          (cons (match-string-no-properties 2)
+                (match-string-no-properties 1)))))))
+
 (defun moo-c++-class-name-and-template ()
   "Return currrent class name and template as a cons."
-  (ignore-errors
-    (save-excursion
-      (let (name template defun-start)
-        ;; step out of the current block
-        (with-syntax-table moo-c++-braces-table
-          (up-list)
-          (backward-list))
-        ;; TODO take care of nested classes
-        (if (looking-back
-             "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
-            (progn
-              (goto-char (match-beginning 0))
+  (or (moo-c++-match-constructor-impl)
+      (ignore-errors
+        (save-excursion
+          (let (name template defun-start)
+            ;; step out of the current block
+            (with-syntax-table moo-c++-braces-table
+              (up-list)
+              (backward-list))
+            ;; TODO take care of nested classes
+            (if (looking-back
+                 "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
+                (progn
+                  (goto-char (match-beginning 0))
+                  (setq name (match-string-no-properties 1))
+                  ;; try to match the template as well
+                  (when (looking-back ">[\n \t]*")
+                    (let ((end (progn (goto-char (match-beginning 0)) (point)))
+                          (beg (ignore-errors (forward-char) (backward-list) (point))))
+                      (when end
+                        (setq template (buffer-substring-no-properties (1+ beg) end))))))
+              ;; we're not in class, but in a function
+              (beginning-of-defun)
+              (setq defun-start (point))
+              (when (looking-at "template +<")
+                (goto-char (1- (match-end 0)))
+                (setq template (substring (moo-list-at-point) 1 -1))
+                (forward-list))
+              (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
               (setq name (match-string-no-properties 1))
-              ;; try to match the template as well
-              (when (looking-back ">[\n \t]*")
-                (let ((end (progn (goto-char (match-beginning 0)) (point)))
-                      (beg (ignore-errors (forward-char) (backward-list) (point))))
-                  (when end
-                    (setq template (buffer-substring-no-properties (1+ beg) end))))))
-          ;; we're not in class, but in a function
-          (beginning-of-defun)
-          (setq defun-start (point))
-          (when (looking-at "template +<")
-            (goto-char (1- (match-end 0)))
-            (setq template (substring (moo-list-at-point) 1 -1))
-            (forward-list))
-          (re-search-forward " \\([A-Za-z][A-Z_a-z0-9]*\\)\\(\\(?:<[^>]*>\\)?\\)::")
-          (setq name (match-string-no-properties 1))
-          ;; check if there's a mess up
-          (when (re-search-backward "{" defun-start t)
-            (setq name)))
-        (cons name template)))))
+              ;; check if there's a mess up
+              (when (re-search-backward "{" defun-start t)
+                (setq name)))
+            (cons name template))))))
 
 (defun moo-list-at-point ()
   "Return any list at point.
