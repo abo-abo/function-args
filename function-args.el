@@ -983,6 +983,9 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                       (var-used-as-classvar-p
                        ;; semantic may think it's a function
                        (let ((tag-type (moo-complete-type-member var-tag)))
+                         (when (eq tag-type t)
+                           (setq var-tag (moo-ctxt-type))
+                           (setq tag-type (semantic-tag-get-attribute var-tag :type)))
                          (if (moo-ttype->tmembers tag-type)
                              tag-type
                            ;; this works sometimes
