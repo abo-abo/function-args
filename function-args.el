@@ -742,6 +742,7 @@ NAME is the TAG name."
   (point))
 
 (defun fa-start-tracking ()
+  "Call `fa-after-change' after each change to buffer."
   (setq fa-beg-pos (save-excursion (re-search-backward "(" nil t) (point)))
   (setq fa-end-pos (save-excursion (re-search-forward ")" nil t) (- (point) 1)))
   (add-hook 'after-change-functions 'fa-after-change))
