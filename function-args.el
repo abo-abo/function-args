@@ -845,14 +845,9 @@ PARAMS are passed further to `moo-action-insert'."
      (moo-action-insert (car candidates) params prefix))
     ;; multiple candidates with different names
     (t
-     (let* ((completion-ignore-case (string= prefix (downcase prefix)))
-            (tc (try-completion (or prefix "") candidates)))
-       ;; unique match
-       (if (eq tc t)
-           (error "Unexpected.")
-         (moo-select-candidate
-          (mapcar 'moo-tag->cons candidates)
-          (lambda (x) (moo-action-insert x params prefix))))))))
+     (moo-select-candidate
+      (mapcar 'moo-tag->cons candidates)
+      (lambda (x) (moo-action-insert x params prefix))))))
 
 (defun moo-tag->cons (tag)
   "Return for TAG a cons (TAG . STR).
