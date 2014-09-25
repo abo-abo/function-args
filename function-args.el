@@ -694,12 +694,6 @@ TYPE and NAME are strings."
                 ",")
                ">")))
 
-(defun moo-tag->cons (tag)
-  "Return for TAG a cons (STR . NAME).
-STR is the result of `moo-tag->str' on TAG,
-NAME is the TAG name."
-  (cons (car tag) (moo-tag->str tag)))
-
 (defun moo-tag->str (tag)
   (let ((class (semantic-tag-class tag)))
     (ignore-errors
@@ -839,34 +833,41 @@ Reverse direction when ARG is not nil."
         (delete-region (match-beginning 0) (match-end 0))
       (error "Can't erase %s" str))))
 
-(defun moo-handle-completion (prefix candidates &optional formatter)
+(defun moo-handle-completion (prefix candidates &optional params)
   "Select tag that starting with PREFIX from CANDIDATES.
-FORMATTER is used to convert tag to string.
-The default FORMATTER is `moo-tag->cons'."
+PARAMS are passed further to `moo-action-insert'."
   (cond
     ((null candidates)
      (message "there is no completions, only Zuul"))
     ;; either one candidate or multiple with same name:
     ((or (= 1 (length candidates))
          (cl-reduce (lambda (x1 x2) (and x1 (string= (car x1) (car x2)) x1)) candidates))
-     (moo-action-insert
-      (funcall (or formatter #'car) (car candidates))
-      prefix))
+     (moo-action-insert (car candidates) params prefix))
     ;; multiple candidates with different names
     (t
      (let* ((completion-ignore-case (string= prefix (downcase prefix)))
             (tc (try-completion (or prefix "") candidates)))
+       ;; unique match
        (if (eq tc t)
-           (moo-action-insert tc prefix)
+           (error "Unexpected.")
          (moo-select-candidate
-          (mapcar (or formatter 'moo-tag->cons)
-                  candidates)
-          (lambda (x) (moo-action-insert x prefix))))))))
+          (mapcar 'moo-tag->cons candidates)
+          (lambda (x) (moo-action-insert x params prefix))))))))
 
-(defun moo-action-insert (candidate &optional prefix)
+(defun moo-tag->cons (tag)
+  "Return for TAG a cons (TAG . STR).
+STR is the result of `moo-tag->str' on TAG,
+NAME is the TAG name."
+  (cons tag (moo-tag->str tag)))
+
+(defun moo-action-insert (candidate formatter &optional prefix)
+  "Insert tag CANDIDATE.
+When PREFIX is not nil, erase it before inserting."
   (when prefix
     (moo-erase-string prefix))
-  (cond ((stringp candidate)
+  (cond ((eq formatter 'full-tag)
+         (insert (moo-tag->str candidate)))
+        ((stringp candidate)
          (insert candidate))
         ((and (consp candidate)
               (stringp (car candidate)))
@@ -889,7 +890,8 @@ The default FORMATTER is `moo-tag->cons'."
                                                           (cons (cdr x) (car x))
                                                         (when (stringp (car x))
                                                           (cons (car x) x)))
-                                                    x)) candidates)))
+                                                    x))
+                                                candidates)))
                       (action . ,action))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
@@ -912,7 +914,7 @@ The default FORMATTER is `moo-tag->cons'."
           (let ((members (filter pred
                                  (moo-ttype->tmembers ttype))))
             (setq members (sort members (lambda (a b) (string< (car a) (car b)))))
-            (moo-handle-completion "" members #'moo-tag->str)))))))
+            (moo-handle-completion "" members 'full-tag)))))))
 
 ;; ——— Internals ———————————————————————————————————————————————————————————————
 (defalias 'filter 'cl-remove-if-not)
