@@ -556,7 +556,9 @@ Select bold faces when BOLD is t."
                (if bold 'fa-face-hint-bold 'fa-face-hint))))
 
 (defun fa-tfunction->fal (tag &optional output-string)
-  "Return function argument list structure for TAG."
+  "Return function argument list structure for TAG.
+It has the structure:
+(template type (file . position) arguments)."
   (let ((filename (moo-tget-filename tag))
         (position (moo-tget-beginning-position tag))
         (name (pop tag))
@@ -861,6 +863,17 @@ The default FORMATTER is `moo-tag->cons'."
                   candidates)
           (lambda (x) (moo-action-insert x prefix))))))))
 
+(defun moo-action-insert (candidate &optional prefix)
+  (when prefix
+    (moo-erase-string prefix))
+  (cond ((stringp candidate)
+         (insert candidate))
+        ((and (consp candidate)
+              (stringp (car candidate)))
+         (insert (car candidate)))
+        (t
+         (error "Unexpected"))))
+
 (defun moo-select-candidate (candidates action &optional name)
   (unless name
     (setq name "Candidates"))
@@ -882,16 +895,7 @@ The default FORMATTER is `moo-tag->cons'."
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
 
-(defun moo-action-insert (candidate &optional prefix)
-  (when prefix
-    (moo-erase-string prefix))
-  (cond ((stringp candidate)
-         (insert candidate))
-        ((and (consp candidate)
-              (stringp (car candidate)))
-         (insert (car candidate)))
-        (t
-         (error "Unexpected"))))
+
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
