@@ -278,7 +278,8 @@ When ARG is not nil offer only variables as candidates."
            (setq prefix (caddr symbol))
            (setq candidates
                  (or (moo-ttype->tmembers
-                      (car (moo-complete-candidates-2 (cadr symbol) (car symbol))))
+                      (moo-complete-type-member
+                       (car (moo-complete-candidates-2 (cadr symbol) (car symbol)))))
                      (semantic-analyze-possible-completions
                       (semantic-analyze-current-context (point)))))))
         (moo-handle-completion
