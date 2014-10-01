@@ -72,6 +72,14 @@
           (const :tag "Plain" display-completion-list))
   :group 'function-args)
 
+(defcustom fa-insert-method 'name
+  "How to insert a function completed with `moo-complete'."
+  :type '(choice
+          (const :tag "name only" name)
+          (const :tag "name and parens" name-and-parens)
+          (const :tag "name and parens and hint" name-and-parens-and-hint))
+  :group 'function-args)
+
 (defface fa-face-hint
     '((t (:background "#fff3bc" :foreground "black")))
   "Basic hint face."
@@ -863,6 +871,13 @@ When PREFIX is not nil, erase it before inserting."
     (moo-erase-string prefix))
   (cond ((eq formatter 'full-tag)
          (insert (moo-tag->str candidate)))
+        ((moo-functionp candidate)
+         (insert (semantic-tag-name candidate))
+         (unless (eq fa-insert-method 'name)
+           (insert "()")
+           (backward-char 1)
+           (when (eq fa-insert-method 'name-and-parens-and-hint)
+             (fa-show))))
         ((stringp candidate)
          (insert candidate))
         ((and (consp candidate)
