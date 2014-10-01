@@ -567,16 +567,15 @@ Select bold faces when BOLD is t."
 (defun fa-tfunction->fal (tag &optional output-string)
   "Return function argument list structure for TAG.
 It has the structure: (template type (file . position) arguments)."
+  (unless (eq (semantic-tag-class tag) 'function)
+    (error "Not a function"))
   (let ((filename (moo-tget-filename tag))
         (position (moo-tget-beginning-position tag))
-        (name (pop tag))
-        (name-e (pop tag))
-        (r (pop tag))
+        (name (semantic-tag-name tag))
+        (r (semantic-tag-attributes tag))
         template-p type-p arguments-p constant-flag-p
         methodconst-flag-p typemodifiers-p constructor-flag-p
         pointer-p template-specifier-p item)
-    (unless (eq name-e 'function)
-      (error "Not a function"))
     (while r
       (setq item (pop r))
       (case item
