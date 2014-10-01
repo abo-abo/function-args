@@ -566,8 +566,7 @@ Select bold faces when BOLD is t."
 
 (defun fa-tfunction->fal (tag &optional output-string)
   "Return function argument list structure for TAG.
-It has the structure:
-(template type (file . position) arguments)."
+It has the structure: (template type (file . position) arguments)."
   (let ((filename (moo-tget-filename tag))
         (position (moo-tget-beginning-position tag))
         (name (pop tag))
