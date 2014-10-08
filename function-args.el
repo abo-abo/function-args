@@ -601,29 +601,35 @@ It has the structure: (template type (file . position) arguments)."
                             #'fa-variable->cons
                             (mapcar
                              (lambda (x) (if (string= (car x) "") (setcar x "")) x)
-                             arguments-p))))
+                             arguments-p)))
+          (template-part
+           (and template-p
+                (concat "template " (fa-ttemplate-specifier->str template-p) " ")))
+          (return-type
+           (concat (if constant-flag-p
+                       "const "
+                     "")
+                   (if type-p
+                       (propertize (fa-type->str type-p) 'face 'font-lock-type-face)
+                     "?")
+                   (if pointer-p " *" ""))))
       (if (null output-string)
           (cons
            ;; name and type part
-           (list (and template-p
-                      (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+           (list template-part
                  (if constructor-flag-p
                      name
-                   (if type-p
-                       (fa-type->str type-p)
-                     "?"))
+                   return-type)
                  (cons filename position))
            ;; arguments part
            argument-conses)
         ;; ——— output a string instead —————————————————————————————————————————————
         (concat
-         (and template-p (concat "template " (fa-ttemplate-specifier->str template-p) " "))
+         template-part
          (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
          (if constructor-flag-p
              ""
-           (if type-p
-               (propertize (fa-type->str type-p) 'face 'font-lock-type-face)
-             "?"))
+           return-type)
          " " (propertize name 'face 'font-lock-function-name-face)
          "("
          (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
