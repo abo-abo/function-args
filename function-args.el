@@ -600,7 +600,7 @@ It has the structure: (template type (file . position) arguments)."
     (let ((argument-conses (mapcar
                             #'fa-variable->cons
                             (mapcar
-                             (lambda (x) (if (string= (car x) "") (setcar x "")) x)
+                             (lambda (x) (unless (stringp (car x)) (setcar x "")) x)
                              arguments-p)))
           (template-part
            (and template-p
