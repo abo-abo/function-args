@@ -150,7 +150,8 @@
   (define-key map (kbd "M-n") 'fa-idx-cycle-down)
   (define-key map (kbd "M-h") 'fa-idx-cycle-up)
   (define-key map (kbd "M-u") 'fa-abort)
-  (define-key map (kbd "M-j") 'fa-jump-maybe))
+  (define-key map (kbd "M-j") 'fa-jump-maybe)
+  (define-key map (kbd "C-M-j") 'moo-jump-local))
 
 (defun fa-jump-maybe ()
   "Jump to definition if `fa-show' overlay is active.
@@ -712,11 +713,12 @@ TYPE and NAME are strings."
                   (setq type (car type)))
                  ((null type)
                   (setq type "#define")))
-           (format "%s%s %s"
+           (format "%s%s%s %s"
                    (if (semantic-tag-get-attribute tag :constant-flag)
                        (propertize "const " 'face 'font-lock-keyword-face)
                      "")
                    (propertize type 'face 'font-lock-type-face)
+                   (if (semantic-tag-get-attribute tag :pointer) "*" "")
                    (propertize (car tag) 'face 'font-lock-variable-name-face))))
         (type
          (propertize (car tag) 'face 'font-lock-type-face))
