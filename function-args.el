@@ -920,12 +920,11 @@ When PREFIX is not nil, erase it before inserting."
                                                           (cons (car x) x)))
                                                     x))
                                                 candidates)))
-                      (action . ,action))))
+                      (action . ,action))
+           :preselect (moo-tag->str (semantic-current-tag))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
-
-
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
