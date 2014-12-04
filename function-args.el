@@ -166,12 +166,15 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
       (fa-jump)
     (c-indent-new-comment-line)))
 
+(defun turn-on-function-args-mode ()
+  (function-args-mode 1))
+
 ;; ——— Setup ———————————————————————————————————————————————————————————————————
 ;;;###autoload
 (defun fa-config-default ()
   "Set up default key bindings."
-  (add-hook 'c++-mode-hook
-            (lambda () (function-args-mode 1))))
+  (add-hook 'c++-mode-hook 'turn-on-function-args-mode)
+  (add-hook 'c-mode-hook 'turn-on-function-args-mode))
 
 ;; ——— Internal variables ——————————————————————————————————————————————————————
 (defvar fa-overlay nil
