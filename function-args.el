@@ -114,6 +114,11 @@
 (defconst fa-comma (propertize "," 'face 'fa-face-semi)
   "String to join arguments.")
 
+(defcustom moo-do-includes t
+  "When t, `moo-jump-local' will list includes as well."
+  :type 'boolean
+  :group 'function-args)
+
 ;; ——— Minor mode ——————————————————————————————————————————————————————————————
 (defvar function-args-mode-map (make-sparse-keymap))
 
@@ -723,6 +728,14 @@ TYPE and NAME are strings."
         (type
          (propertize (car tag) 'face 'font-lock-type-face))
         (label)
+        (include
+         (format "%s <%s>"
+                 (propertize "#include" 'face 'font-lock-preprocessor-face)
+                 (car tag)))
+        (using
+         (format "%s %s"
+                 (propertize "using" 'face 'font-lock-keyword-face)
+                 (car tag)))
         (t (error "Unknown tag class: %s" class))))))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
@@ -1375,7 +1388,8 @@ Returns TAG if it's not a typedef."
   (cl-labels ((namespace-reduce
                   (func tags out)
                 (dolist (tag tags)
-                  (cond ((or (moo-includep tag) (moo-usingp tag))
+                  (cond ((and (not moo-do-includes)
+                          (or (moo-includep tag) (moo-usingp tag)))
                          ;; skip
                          )
 
