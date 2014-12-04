@@ -913,18 +913,19 @@ When PREFIX is not nil, erase it before inserting."
     (helm
      (require 'helm)
      (require 'helm-help)
-     (helm :sources `((name . ,name)
-                      (candidates . ,(delq nil (mapcar
-                                                (lambda (x)
-                                                  (if (listp x)
-                                                      (if (stringp (cdr x))
-                                                          (cons (cdr x) (car x))
-                                                        (when (stringp (car x))
-                                                          (cons (car x) x)))
-                                                    x))
-                                                candidates)))
-                      (action . ,action))
-           :preselect (moo-tag->str (semantic-current-tag))))
+     (helm :sources
+           `((name . ,name)
+             (candidates . ,(delq nil (mapcar
+                                       (lambda (x)
+                                         (if (listp x)
+                                             (if (stringp (cdr x))
+                                                 (cons (cdr x) (car x))
+                                               (when (stringp (car x))
+                                                 (cons (car x) x)))
+                                           x))
+                                       candidates)))
+             (action . ,action))
+           :preselect (regexp-quote (or (moo-tag->str (semantic-current-tag)) ""))))
     (display-completion-list
      (with-output-to-temp-buffer "*Completions*"
        (display-completion-list candidates)))))
