@@ -325,7 +325,7 @@ When ARG is not nil offer only variables as candidates."
   (interactive)
   (let ((tags (semantic-fetch-tags)))
     (moo-select-candidate
-     (if (eq major-mode 'c++-mode)
+     (if (memq major-mode '(c++-mode c-mode))
          (mapcar
           (lambda (x) (cons x (moo-tag->str x)))
           (moo-flatten-namepaces tags))
