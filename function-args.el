@@ -1076,19 +1076,20 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
 ;; this is similar to stype->tag
 ;; I should refactor this
 (defun moo-complete-type-member (var-tag)
-  (let ((type-name (semantic-tag-get-attribute var-tag :type)))
-    (cond
-      ;; this happens sometimes
-      ((equal type-name "class")
-       var-tag)
-      ;; this as well
-      ((or (equal type-name "namespace") (eq type-name 'namespace))
-       (moo-sname->tag (car var-tag)))
-      (t
-       (when (listp type-name)
-         (setq type-name (car type-name)))
-       (or (moo-stype->tag type-name)
-           (moo-type-tag-at-point type-name))))))
+  (when var-tag
+    (let ((type-name (semantic-tag-get-attribute var-tag :type)))
+      (cond
+        ;; this happens sometimes
+        ((equal type-name "class")
+         var-tag)
+        ;; this as well
+        ((or (equal type-name "namespace") (eq type-name 'namespace))
+         (moo-sname->tag (car var-tag)))
+        (t
+         (when (listp type-name)
+           (setq type-name (car type-name)))
+         (or (moo-stype->tag type-name)
+             (moo-type-tag-at-point type-name)))))))
 
 (defun moo-ctxt-current-symbol ()
   (or (semantic-ctxt-current-symbol)
