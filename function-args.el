@@ -259,7 +259,7 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
   (interactive)
   (when (overlayp fa-overlay)
     (fa-abort)
-    (push-mark (point) t)
+    (ring-insert find-tag-marker-ring (point-marker))
     (let ((tag (nth 2 (car (nth fa-idx fa-lst)))))
       (let ((fname (or (car tag)
                        (save-excursion
