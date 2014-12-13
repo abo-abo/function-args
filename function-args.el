@@ -1324,7 +1324,9 @@ Returns TAG if it's not a typedef."
   (let ((typedef (semantic-tag-get-attribute tag :typedef)))
     (when typedef
       (setq tag
-            (moo-sname->tag (car typedef))))
+            (or
+             (moo-sname->tag (car typedef))
+             typedef)))
     (semantic-tag-get-attribute tag :members)))
 
 (defun moo-ttype->tmembers (ttype)
