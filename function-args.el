@@ -637,7 +637,11 @@ It has the structure: (template type (file . position) arguments)."
         ;; ——— output a string instead —————————————————————————————————————————————
         (concat
          template-part
-         (and typemodifiers-p (concat (mapconcat #'identity typemodifiers-p " ") " "))
+         (and typemodifiers-p
+              (propertize
+               (concat (mapconcat #'identity typemodifiers-p " ") " ")
+               'face
+               'font-lock-keyword-face))
          (if constructor-flag-p
              ""
            return-type)
