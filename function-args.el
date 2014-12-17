@@ -604,7 +604,8 @@ It has the structure: (template type (file . position) arguments)."
           :destructor-flag
           :pure-virtual-flag
           :throws
-          :filename)
+          :filename
+          :depth)
          (pop r))
         (t (error "Unknown token %s" item))))
     (let ((argument-conses (mapcar
@@ -711,36 +712,43 @@ TYPE and NAME are strings."
                ">")))
 
 (defun moo-tag->str (tag)
-  (let ((class (semantic-tag-class tag)))
-    (ignore-errors
-      (cl-case class
-        (function
-         (fa-tfunction->fal tag t))
-        (variable
-         (let ((type (semantic-tag-type tag)))
-           (cond ((consp type)
-                  (setq type (car type)))
-                 ((null type)
-                  (setq type "#define")))
-           (format "%s%s%s %s"
-                   (if (semantic-tag-get-attribute tag :constant-flag)
-                       (propertize "const " 'face 'font-lock-keyword-face)
-                     "")
-                   (propertize type 'face 'font-lock-type-face)
-                   (if (semantic-tag-get-attribute tag :pointer) "*" "")
-                   (propertize (car tag) 'face 'font-lock-variable-name-face))))
-        (type
-         (propertize (car tag) 'face 'font-lock-type-face))
-        (label)
-        (include
-         (format "%s <%s>"
-                 (propertize "#include" 'face 'font-lock-preprocessor-face)
-                 (car tag)))
-        (using
-         (format "%s %s"
-                 (propertize "using" 'face 'font-lock-keyword-face)
-                 (car tag)))
-        (t (error "Unknown tag class: %s" class))))))
+  (let* ((class (semantic-tag-class tag))
+         (depth (or (semantic-tag-get-attribute tag :depth) 0))
+         (str (ignore-errors
+                (cl-case class
+                  (function
+                   (fa-tfunction->fal tag t))
+                  (variable
+                   (let ((type (semantic-tag-type tag)))
+                     (cond ((consp type)
+                            (setq type (car type)))
+                           ((null type)
+                            (setq type "#define")))
+                     (format "%s%s%s %s"
+                             (if (semantic-tag-get-attribute tag :constant-flag)
+                                 (propertize "const " 'face 'font-lock-keyword-face)
+                               "")
+                             (propertize type 'face 'font-lock-type-face)
+                             (if (semantic-tag-get-attribute tag :pointer) "*" "")
+                             (propertize (car tag) 'face 'font-lock-variable-name-face))))
+                  (type
+                   (propertize (car tag) 'face 'font-lock-type-face))
+                  (label)
+                  (include
+                   (format "%s <%s>"
+                           (propertize "#include" 'face 'font-lock-preprocessor-face)
+                           (car tag)))
+                  (using
+                   (format "%s %s"
+                           (propertize "using" 'face 'font-lock-keyword-face)
+                           (car tag)))
+                  (t (error "Unknown tag class: %s" class))))))
+    (when str
+      (concat
+       (if depth
+           (make-string (* depth 2) ?\ )
+         "")
+       str))))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
 (defun fa-do-position ()
@@ -1406,7 +1414,7 @@ Returns TAG if it's not a typedef."
 (defun moo-namespace-reduce (func tags)
   "Reduce with two-argument function FUNC the forest TAGS."
   (cl-labels ((namespace-reduce
-                  (func tags out)
+                  (func tags out depth)
                 (dolist (tag tags)
                   (cond ((and (not moo-do-includes)
                           (or (moo-includep tag) (moo-usingp tag)))
@@ -1418,21 +1426,25 @@ Returns TAG if it's not a typedef."
                                (namespace-reduce
                                 func
                                 (semantic-tag-get-attribute tag :members)
-                                (funcall func out tag))))
+                                (funcall func out tag depth)
+                                (1+ depth))))
 
-                        (t (setq out (funcall func out tag)))))
+                        (t (setq out (funcall func out tag depth)))))
                 out))
-    (nreverse (namespace-reduce func tags nil))))
+    (nreverse (namespace-reduce func tags nil 0))))
 
 (defun moo-find-sname-in-tags (stag tags)
   "Find tags named STAG in forest TAGS."
   (moo-namespace-reduce
-   (lambda (x y) (if (string= (car y) stag) (push y x) x))
+   (lambda (x y depth) (if (string= (car y) stag) (push y x) x))
    tags))
 
 (defun moo-flatten-namepaces (tags)
   "Traverse the namespace forest TAGS and return the leafs."
-  (moo-namespace-reduce (lambda (x y) (push y x)) tags))
+  (moo-namespace-reduce
+   (lambda (x y depth)
+     (push (semantic-tag-put-attribute y :depth depth) x))
+   tags))
 
 (defun moo-c++-class-name ()
   "Return current class name."
