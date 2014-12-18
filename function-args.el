@@ -616,8 +616,8 @@ It has the structure: (template type (file . position) arguments)."
                'font-lock-keyword-face))
          (if constructor-flag-p
              ""
-           return-type)
-         " " (propertize name 'face 'font-lock-function-name-face)
+           (concat return-type " "))
+         (propertize name 'face 'font-lock-function-name-face)
          "("
          (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
                     argument-conses
