@@ -4,7 +4,8 @@
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
-;; Version: 0.5.0
+;; Version: 0.5.1
+;; Package-Requires: ((helm "1.6.5"))
 
 ;; This file is not part of GNU Emacs
 
@@ -43,6 +44,9 @@
   (require 'cl))
 (require 'semantic/ia)
 (require 'semantic/db-find)
+(require 'helm)
+(require 'helm-help)
+(require 'helm-source)
 
 ;; ——— Customization ———————————————————————————————————————————————————————————
 (defgroup function-args nil
@@ -939,8 +943,6 @@ When PREFIX is not nil, erase it before inserting."
           (preselect
            (regexp-quote (or (moo-tag->str (semantic-current-tag))
                              ""))))
-      (require 'helm)
-      (require 'helm-help)
       (cl-case moo-select-method
         (helm
          (helm :sources
