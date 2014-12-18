@@ -138,6 +138,15 @@
   (if function-args-mode
       (semantic-mode 1)))
 
+(defvar fa-idx nil
+  "Current function arguments variant.")
+
+(defvar fa-lst nil
+  "Current function arguments variants.")
+
+(defvar fa-arg 0
+  "Current function argument.")
+
 (defun fa-idx-cycle-down ()
   "Cycle `fa-idx' down and redisplay function arguments."
   (interactive)
@@ -163,6 +172,9 @@
   (define-key map (kbd "M-j") 'fa-jump-maybe)
   (define-key map (kbd "C-M-j") 'moo-jump-local))
 
+(defvar fa-overlay nil
+  "Hint overlay instance.")
+
 (defun fa-jump-maybe ()
   "Jump to definition if `fa-show' overlay is active.
 Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
@@ -182,9 +194,6 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
   (add-hook 'c-mode-hook 'turn-on-function-args-mode))
 
 ;; ——— Internal variables ——————————————————————————————————————————————————————
-(defvar fa-overlay nil
-  "Hint overlay instance.")
-
 (defvar fa-hint-pos nil
   "Point position where the hint should be (re-) displayed.")
 
@@ -193,15 +202,6 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
 
 (defvar fa-end-pos nil
   "Position of ) after `fa-start-tracking' was invoked.")
-
-(defvar fa-lst nil
-  "Current function arguments variants.")
-
-(defvar fa-arg 0
-  "Current function argument.")
-
-(defvar fa-idx nil
-  "Current function arguments variant.")
 
 (defvar fa-superclasses (make-hash-table :test 'equal)
   "Stores superclasses tags.")
@@ -309,38 +309,6 @@ When ARG is not nil offer only variables as candidates."
          (cl-delete-duplicates candidates :test #'moo-tag=))
       ;; ———  ————————————————————————————————————————————————————————————————————————
       (semantic-ia-complete-symbol (point)))))
-
-(defun moo-propose-virtual ()
-  "Call `moo-propose' for virtual functions."
-  (interactive)
-  (moo-propose (fa-and moo-functionp moo-virtualp)))
-
-(defun moo-propose-override ()
-  "Call `moo-propose' for all functions."
-  (interactive)
-  (moo-propose #'moo-functionp))
-
-(defun moo-propose-variables ()
-  "Call `moo-propose' for all variables."
-  (interactive)
-  (moo-propose #'moo-variablep))
-
-(defun moo-jump-local ()
-  "Select a tag to jump to from tags defined in current buffer."
-  (interactive)
-  (let ((tags (semantic-fetch-tags)))
-    (moo-select-candidate
-     (if (memq major-mode '(c++-mode c-mode))
-         (mapcar
-          (lambda (x) (cons x (moo-tag->str x)))
-          (moo-flatten-namepaces tags))
-       tags)
-     #'moo-action-jump)))
-
-(defun moo-reset-superclasses-cache ()
-  "Reset `fa-superclasses'."
-  (interactive)
-  (setq fa-superclasses (make-hash-table :test 'equal)))
 
 ;; ——— Predicates ——————————————————————————————————————————————————————————————
 (defmacro fa-and (&rest predicates)
@@ -759,6 +727,38 @@ TYPE and NAME are strings."
        str))))
 
 ;; ——— Misc non-pure ———————————————————————————————————————————————————————————
+(defun moo-propose-virtual ()
+  "Call `moo-propose' for virtual functions."
+  (interactive)
+  (moo-propose (fa-and moo-functionp moo-virtualp)))
+
+(defun moo-propose-override ()
+  "Call `moo-propose' for all functions."
+  (interactive)
+  (moo-propose #'moo-functionp))
+
+(defun moo-propose-variables ()
+  "Call `moo-propose' for all variables."
+  (interactive)
+  (moo-propose #'moo-variablep))
+
+(defun moo-jump-local ()
+  "Select a tag to jump to from tags defined in current buffer."
+  (interactive)
+  (let ((tags (semantic-fetch-tags)))
+    (moo-select-candidate
+     (if (memq major-mode '(c++-mode c-mode))
+         (mapcar
+          (lambda (x) (cons x (moo-tag->str x)))
+          (moo-flatten-namepaces tags))
+       tags)
+     #'moo-action-jump)))
+
+(defun moo-reset-superclasses-cache ()
+  "Reset `fa-superclasses'."
+  (interactive)
+  (setq fa-superclasses (make-hash-table :test 'equal)))
+
 (defun fa-do-position ()
   "Position the cursor at the `(', which is logically closest."
   (cond
