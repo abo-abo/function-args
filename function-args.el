@@ -113,12 +113,12 @@
 (defface fa-face-type-definition
     '((t (:inherit font-lock-type-face :background "#CECEFF")))
   "Face for type definitions."
-  :group 'lispy-faces)
+  :group 'function-args-faces)
 
 (defface fa-face-type-compound
-    '((t (:inherit font-lock-type-face :background "#DDDDEE")))
+    '((t (:inherit font-lock-type-face)))
   "Face for compound types."
-  :group 'lispy-faces)
+  :group 'function-args-faces)
 
 (defconst fa-paren-open (propertize "(" 'face 'fa-face-semi)
   "String to open argument list.")
