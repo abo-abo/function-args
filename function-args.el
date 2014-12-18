@@ -1,6 +1,6 @@
 ;;; function-args.el --- C++ completion for GNU Emacs
 
-;; Copyright (C) 2013  Oleh Krehel
+;; Copyright (C) 2013-2014  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
@@ -109,6 +109,16 @@
     '((t (:foreground "#2a00ff" :background "#fff3bc" :bold t)))
   "Face for displaying separators."
   :group 'function-args-faces)
+
+(defface fa-face-type-definition
+    '((t (:inherit font-lock-type-face :background "#CECEFF")))
+  "Face for type definitions."
+  :group 'lispy-faces)
+
+(defface fa-face-type-compound
+    '((t (:inherit font-lock-type-face :background "#DDDDEE")))
+  "Face for compound types."
+  :group 'lispy-faces)
 
 (defconst fa-paren-open (propertize "(" 'face 'fa-face-semi)
   "String to open argument list.")
@@ -695,20 +705,23 @@ TYPE and NAME are strings."
                   (function
                    (fa-tfunction->fal tag t))
                   (variable
-                   (let ((type (semantic-tag-type tag)))
+                   (let ((type (semantic-tag-type tag))
+                         (face 'font-lock-type-face))
                      (cond ((consp type)
-                            (setq type (car type)))
+                            (setq type (car type))
+                            (setq face 'fa-face-type-compound))
                            ((null type)
                             (setq type "#define")))
                      (format "%s%s%s %s"
                              (if (semantic-tag-get-attribute tag :constant-flag)
                                  (propertize "const " 'face 'font-lock-keyword-face)
                                "")
-                             (propertize type 'face 'font-lock-type-face)
+                             (propertize type 'face face)
                              (if (semantic-tag-get-attribute tag :pointer) "*" "")
                              (propertize (car tag) 'face 'font-lock-variable-name-face))))
                   (type
-                   (propertize (car tag) 'face 'font-lock-type-face))
+                   (propertize (car tag) 'face
+                               'fa-face-type-definition))
                   (label)
                   (include
                    (format "%s <%s>"
@@ -924,9 +937,9 @@ When PREFIX is not nil, erase it before inserting."
          (error "Unexpected"))))
 
 (defun moo-select-candidate (candidates action &optional name)
-  (setq name (or name "Candidates"))
+  (setq name (or name "semantic tags"))
   (if (eq moo-select-method 'display-completion-list)
-      (with-output-to-temp-buffer "*Completions*"
+      (with-output-to-temp-buffer "*moo-jump*"
         (display-completion-list
          (all-completions "" (mapcar #'caar candidates))))
 
@@ -949,14 +962,16 @@ When PREFIX is not nil, erase it before inserting."
                `((name . ,name)
                  (candidates . ,candidates)
                  (action . ,action))
-               :preselect preselect))
+               :preselect preselect
+               :buffer "*moo-jump*"))
         (helm-fuzzy
          (helm :sources
                (helm-build-sync-source name
                  :candidates candidates
                  :fuzzy-match t
                  :action action)
-               :preselect preselect))))))
+               :preselect preselect
+               :buffer "*moo-jump*"))))))
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
