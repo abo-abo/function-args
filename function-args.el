@@ -706,7 +706,8 @@ TYPE and NAME are strings."
                    (fa-tfunction->fal tag t))
                   (variable
                    (let ((type (semantic-tag-type tag))
-                         (face 'font-lock-type-face))
+                         (face 'font-lock-type-face)
+                         pointer-depth)
                      (cond ((consp type)
                             (setq type (car type))
                             (setq face 'fa-face-type-compound))
@@ -717,7 +718,9 @@ TYPE and NAME are strings."
                                  (propertize "const " 'face 'font-lock-keyword-face)
                                "")
                              (propertize type 'face face)
-                             (if (semantic-tag-get-attribute tag :pointer) "*" "")
+                             (if (setq pointer-depth (semantic-tag-get-attribute tag :pointer))
+                                 (make-string pointer-depth ?*)
+                               "")
                              (propertize (car tag) 'face 'font-lock-variable-name-face))))
                   (type
                    (propertize (car tag) 'face
