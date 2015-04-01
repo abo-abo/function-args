@@ -5,7 +5,7 @@
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
 ;; Version: 0.5.1
-;; Package-Requires: ((helm "1.6.5"))
+;; Package-Requires: ((swiper "0.2.0"))
 
 ;; This file is not part of GNU Emacs
 
@@ -44,9 +44,6 @@
   (require 'cl))
 (require 'semantic/ia)
 (require 'semantic/db-find)
-(require 'helm)
-(require 'helm-help)
-(require 'helm-source)
 
 ;; ——— Customization ———————————————————————————————————————————————————————————
 (defgroup function-args nil
@@ -69,9 +66,10 @@
   :type 'integer
   :group 'function-args)
 
-(defcustom moo-select-method 'helm
+(defcustom moo-select-method 'ivy
   "Method to select a candidate from a list of strings."
   :type '(choice
+          (const :tag "Ivy" ivy)
           (const :tag "Helm" helm)
           (const :tag "Helm fuzzy" helm-fuzzy)
           (const :tag "Plain" display-completion-list))
@@ -941,40 +939,54 @@ When PREFIX is not nil, erase it before inserting."
 
 (defun moo-select-candidate (candidates action &optional name)
   (setq name (or name "semantic tags"))
-  (if (eq moo-select-method 'display-completion-list)
-      (with-output-to-temp-buffer "*moo-jump*"
-        (display-completion-list
-         (all-completions "" (mapcar #'caar candidates))))
+  (let (preselect)
+    (cond ((eq moo-select-method 'display-completion-list)
+           (with-output-to-temp-buffer "*moo-jump*"
+             (display-completion-list
+              (all-completions "" (mapcar #'caar candidates)))))
 
-    (let ((candidates
-           (delq nil (mapcar
-                      (lambda (x)
-                        (if (listp x)
-                            (if (stringp (cdr x))
-                                (cons (cdr x) (car x))
-                              (when (stringp (car x))
-                                (cons (car x) x)))
-                          x))
-                      candidates)))
-          (preselect
-           (regexp-quote (or (moo-tag->str (semantic-current-tag))
-                             ""))))
-      (cl-case moo-select-method
-        (helm
-         (helm :sources
-               `((name . ,name)
-                 (candidates . ,candidates)
-                 (action . ,action))
-               :preselect preselect
-               :buffer "*moo-jump*"))
-        (helm-fuzzy
-         (helm :sources
-               (helm-build-sync-source name
-                 :candidates candidates
-                 :fuzzy-match t
-                 :action action)
-               :preselect preselect
-               :buffer "*moo-jump*"))))))
+          ((prog1 (eq moo-select-method 'ivy)
+             (setq candidates
+                   (delq nil
+                         (mapcar
+                          (lambda (x)
+                            (if (listp x)
+                                (if (stringp (cdr x))
+                                    (cons (cdr x) (car x))
+                                  (when (stringp (car x))
+                                    (cons (car x) x)))
+                              x))
+                          candidates)))
+             (setq preselect
+                   (regexp-quote (or (moo-tag->str (semantic-current-tag)) ""))))
+           (let* ((ivy-height 20)
+                  (res (ivy-read "tag: " (mapcar #'car candidates)
+                                 nil nil preselect)))
+             (when res
+               (funcall action
+                        (cdr (assoc res candidates))))))
+
+          ((prog1 (eq moo-select-method 'helm)
+             (require 'helm)
+             (require 'helm-help)
+             (require 'helm-source))
+           (helm :sources
+                 `((name . ,name)
+                   (candidates . ,candidates)
+                   (action . ,action))
+                 :preselect preselect
+                 :buffer "*moo-jump*"))
+
+          ((eq moo-select-method 'helm-fuzzy)
+           (helm :sources
+                 (helm-build-sync-source name
+                   :candidates candidates
+                   :fuzzy-match t
+                   :action action)
+                 :preselect preselect
+                 :buffer "*moo-jump*"))
+          (t
+           (error "Bad `moo-select-method': %S" moo-select-method)))))
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
@@ -1610,7 +1622,9 @@ The point should be on the top-level function name."
 */
 "
              (mapconcat
-              (lambda (x) (format "* @param %s $%d" (car x) (incf ord)))
+              (lambda (x)
+                (format "* @param %s $%d"
+                        (car x) (incf ord)))
               args
               "\n")
              (incf ord)))
