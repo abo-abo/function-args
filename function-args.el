@@ -959,6 +959,7 @@ When PREFIX is not nil, erase it before inserting."
                           candidates)))
              (setq preselect
                    (regexp-quote (or (moo-tag->str (semantic-current-tag)) ""))))
+           (require 'ivy)
            (let* ((ivy-height 20)
                   (res (ivy-read "tag: " (mapcar #'car candidates)
                                  nil nil preselect)))
