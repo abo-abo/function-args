@@ -962,7 +962,7 @@ When PREFIX is not nil, erase it before inserting."
            (require 'ivy)
            (let* ((ivy-height 20)
                   (res (ivy-read "tag: " (mapcar #'car candidates)
-                                 nil nil nil preselect)))
+                                 :preselect preselect)))
              (when res
                (funcall action
                         (cdr (assoc res candidates))))))
