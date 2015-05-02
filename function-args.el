@@ -1,4 +1,4 @@
-;;; function-args.el --- C++ completion for GNU Emacs
+;;; function-args.el --- C++ completion for GNU Emacs -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2013-2014  Oleh Krehel
 
@@ -89,22 +89,22 @@
   :group 'function-args-faces)
 
 (defface fa-face-hint-bold
-    '((t (:background "#fff3bc" :bold t)))
+  '((t (:background "#fff3bc" :bold t)))
   "Basic hint face with bold font. Bold is used to signify the current element."
   :group 'function-args-faces)
 
 (defface fa-face-type
-    '((t (:inherit 'font-lock-type-face :background "#fff3bc")))
+  '((t (:inherit 'font-lock-type-face :background "#fff3bc")))
   "Face for displaying types."
   :group 'function-args-faces)
 
 (defface fa-face-type-bold
-    '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t)))
+  '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t)))
   "Face for displaying types. Bold is used to signify the current element"
   :group 'function-args-faces)
 
 (defface fa-face-semi
-    '((t (:foreground "#2a00ff" :background "#fff3bc" :bold t)))
+  '((t (:foreground "#2a00ff" :background "#fff3bc" :bold t)))
   "Face for displaying separators."
   :group 'function-args-faces)
 
@@ -114,7 +114,7 @@
   :group 'function-args-faces)
 
 (defface fa-face-type-compound
-    '((t (:inherit font-lock-type-face)))
+  '((t (:inherit font-lock-type-face)))
   "Face for compound types."
   :group 'function-args-faces)
 
@@ -759,14 +759,22 @@ TYPE and NAME are strings."
 (defun moo-jump-local ()
   "Select a tag to jump to from tags defined in current buffer."
   (interactive)
-  (let ((tags (semantic-fetch-tags)))
+  (let* ((tags (semantic-fetch-tags))
+         (preselect (moo-tag->str (semantic-current-tag)))
+         (preselect (when (stringp preselect)
+                      (regexp-quote preselect))))
     (moo-select-candidate
      (if (memq major-mode '(c++-mode c-mode))
-         (mapcar
-          (lambda (x) (cons x (moo-tag->str x)))
-          (moo-flatten-namepaces tags))
+         (delq nil
+               (mapcar
+                (lambda (x)
+                  (let ((s (moo-tag->str x)))
+                    (when s
+                      (cons s x))))
+                (moo-flatten-namepaces tags)))
        tags)
-     #'moo-action-jump)))
+     #'moo-action-jump
+     preselect)))
 
 (defun moo-reset-superclasses-cache ()
   "Reset `fa-superclasses'."
@@ -908,7 +916,7 @@ PARAMS are passed further to `moo-action-insert'."
   "Return for TAG a cons (TAG . STR).
 STR is the result of `moo-tag->str' on TAG,
 NAME is the TAG name."
-  (cons tag (moo-tag->str tag)))
+  (cons (moo-tag->str tag) tag))
 
 (defun moo-action-insert (candidate formatter &optional prefix)
   "Insert tag CANDIDATE.
@@ -937,57 +945,42 @@ When PREFIX is not nil, erase it before inserting."
         (t
          (error "Unexpected"))))
 
-(defun moo-select-candidate (candidates action &optional name)
-  (setq name (or name "semantic tags"))
-  (let (preselect)
-    (cond ((eq moo-select-method 'display-completion-list)
-           (with-output-to-temp-buffer "*moo-jump*"
-             (display-completion-list
-              (all-completions "" (mapcar #'caar candidates)))))
+(defun moo-select-candidate (candidates action &optional preselect)
+  (cond ((eq moo-select-method 'display-completion-list)
+         (with-output-to-temp-buffer "*moo-jump*"
+           (display-completion-list
+            (all-completions "" candidates))))
 
-          ((prog1 (eq moo-select-method 'ivy)
-             (setq candidates
-                   (delq nil
-                         (mapcar
-                          (lambda (x)
-                            (if (listp x)
-                                (if (stringp (cdr x))
-                                    (cons (cdr x) (car x))
-                                  (when (stringp (car x))
-                                    (cons (car x) x)))
-                              x))
-                          candidates)))
-             (setq preselect
-                   (regexp-quote (or (moo-tag->str (semantic-current-tag)) ""))))
-           (require 'ivy)
-           (let* ((ivy-height 20)
-                  (res (ivy-read "tag: " (mapcar #'car candidates)
-                                 :preselect preselect)))
-             (when res
-               (funcall action
-                        (cdr (assoc res candidates))))))
+        ((eq moo-select-method 'ivy)
+         (require 'ivy)
+         (let ((ivy-height 20))
+           (ivy-read "tag: " candidates
+                     :preselect preselect
+                     :action (lambda ()
+                               (funcall
+                                action (cdr (assoc ivy--current candidates)))))))
 
-          ((prog1 (eq moo-select-method 'helm)
-             (require 'helm)
-             (require 'helm-help)
-             (require 'helm-source))
-           (helm :sources
-                 `((name . ,name)
-                   (candidates . ,candidates)
-                   (action . ,action))
-                 :preselect preselect
-                 :buffer "*moo-jump*"))
+        ((prog1 (eq moo-select-method 'helm)
+           (require 'helm)
+           (require 'helm-help)
+           (require 'helm-source))
+         (helm :sources
+               `((name . "semantic tags")
+                 (candidates . ,candidates)
+                 (action . ,action))
+               :preselect preselect
+               :buffer "*moo-jump*"))
 
-          ((eq moo-select-method 'helm-fuzzy)
-           (helm :sources
-                 (helm-build-sync-source name
-                   :candidates candidates
-                   :fuzzy-match t
-                   :action action)
-                 :preselect preselect
-                 :buffer "*moo-jump*"))
-          (t
-           (error "Bad `moo-select-method': %S" moo-select-method)))))
+        ((eq moo-select-method 'helm-fuzzy)
+         (helm :sources
+               (helm-build-sync-source "semantic tags"
+                 :candidates candidates
+                 :fuzzy-match t
+                 :action action)
+               :preselect preselect
+               :buffer "*moo-jump*"))
+        (t
+         (error "Bad `moo-select-method': %S" moo-select-method))))
 
 (defun moo-action-jump (tag)
   (when (semantic-tag-p tag)
