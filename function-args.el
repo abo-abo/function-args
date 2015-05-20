@@ -956,9 +956,9 @@ When PREFIX is not nil, erase it before inserting."
          (let ((ivy-height 20))
            (ivy-read "tag: " candidates
                      :preselect preselect
-                     :action (lambda ()
+                     :action (lambda (x)
                                (funcall
-                                action (cdr (assoc ivy--current candidates)))))))
+                                action (cdr (assoc x candidates)))))))
 
         ((prog1 (eq moo-select-method 'helm)
            (require 'helm)
