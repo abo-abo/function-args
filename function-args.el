@@ -53,18 +53,15 @@
 
 (defgroup function-args-faces nil
   "Font-lock faces for `function-args'."
-  :group 'function-args
   :prefix "fa-")
 
 (defcustom fa-hint-position-below nil
   "Non-nil means hint will be shown below point (instead of above)."
-  :type 'boolean
-  :group 'function-args)
+  :type 'boolean)
 
 (defcustom fa-max-one-line-width 60
   "Max hint size that can be displayed on one line."
-  :type 'integer
-  :group 'function-args)
+  :type 'integer)
 
 (defcustom moo-select-method 'ivy
   "Method to select a candidate from a list of strings."
@@ -72,44 +69,58 @@
           (const :tag "Ivy" ivy)
           (const :tag "Helm" helm)
           (const :tag "Helm fuzzy" helm-fuzzy)
-          (const :tag "Plain" display-completion-list))
-  :group 'function-args)
+          (const :tag "Plain" display-completion-list)))
 
 (defcustom fa-insert-method 'name
   "How to insert a function completed with `moo-complete'."
   :type '(choice
           (const :tag "Name only" name)
           (const :tag "Name and parens" name-and-parens)
-          (const :tag "Name and parens and hint" name-and-parens-and-hint))
-  :group 'function-args)
+          (const :tag "Name and parens and hint" name-and-parens-and-hint)))
+
+(defconst fa-hint-dark-color "gray20")
 
 (defface fa-face-hint
-    '((t (:background "#fff3bc" :foreground "black")))
+    `((((class color) (background light))
+       :inherit 'default :background "#fff3bc")
+      (((class color) (background dark))
+       :background ,fa-hint-dark-color))
   "Basic hint face."
   :group 'function-args-faces)
 
 (defface fa-face-hint-bold
-  '((t (:background "#fff3bc" :bold t)))
+  '((t (:inherit fa-face-hint :bold t)))
   "Basic hint face with bold font. Bold is used to signify the current element."
   :group 'function-args-faces)
 
 (defface fa-face-type
-  '((t (:inherit 'font-lock-type-face :background "#fff3bc")))
+    `((((class color) (background light))
+       :inherit 'font-lock-type-face :background "#fff3bc")
+      (((class color) (background dark))
+       :inherit 'font-lock-type-face :background ,fa-hint-dark-color))
   "Face for displaying types."
   :group 'function-args-faces)
 
 (defface fa-face-type-bold
-  '((t (:inherit 'font-lock-type-face :background "#fff3bc" :bold t)))
+    '((t (:inherit 'fa-face-type :bold t)))
   "Face for displaying types. Bold is used to signify the current element"
   :group 'function-args-faces)
 
 (defface fa-face-semi
-  '((t (:foreground "#2a00ff" :background "#fff3bc" :bold t)))
+    '((((class color) (background light))
+       :inherit fa-face-hint-bold
+       :foreground "#2a00ff")
+      (((class color) (background dark))
+       :inherit fa-face-hint-bold
+       :foreground "white"))
   "Face for displaying separators."
   :group 'function-args-faces)
 
 (defface fa-face-type-definition
-    '((t (:inherit font-lock-type-face :background "#CECEFF")))
+    `((((class color) (background light))
+      :inherit font-lock-type-face :background "#CECEFF")
+     (((class color) (background dark))
+      :inherit font-lock-type-face :background ,fa-hint-dark-color))
   "Face for type definitions."
   :group 'function-args-faces)
 
