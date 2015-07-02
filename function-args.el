@@ -585,16 +585,19 @@ WSPACE is the padding."
      ;; name
      (and (cadar lst) (propertize (cadar lst) 'face 'fa-face-type)))))
 
-(defun fa-fancy-argument (cell &optional bold)
-  "Return string representation for CELL.
-CELL is (TYPE . NAME).
+(defun fa-fancy-argument (cel &optional bold)
+  "Return string representation for CEL.
+CEL is (TYPE . NAME).
 Select bold faces when BOLD is t."
-  (concat
-   (propertize (car cell) 'face
-               (if bold 'fa-face-type-bold 'fa-face-type))
-   (propertize " " 'face 'fa-face-hint)
-   (propertize (cdr cell) 'face
-               (if bold 'fa-face-hint-bold 'fa-face-hint))))
+  (if (= (length (cdr cel)) 0)
+      (propertize (car cel) 'face
+                  (if bold 'fa-face-type-bold 'fa-face-type))
+    (concat
+     (propertize (car cel) 'face
+                 (if bold 'fa-face-type-bold 'fa-face-type))
+     (propertize " " 'face 'fa-face-hint)
+     (propertize (cdr cel) 'face
+                 (if bold 'fa-face-hint-bold 'fa-face-hint)))))
 
 (defun fa-tfunction->fal (tag &optional output-string)
   "Return function argument list structure for TAG.
