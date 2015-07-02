@@ -513,6 +513,26 @@ When ARG is not nil offer only variables as candidates."
               (semantic-tag-get-attribute type :members))))
    types-list))
 
+(defcustom fa-do-comments nil
+  "When non-nil, try to add the declaration comment to the overlay.")
+
+(defun fa-get-comment (x)
+  "Try to extract the declaration comment from X.
+X is an element of `fa-lst'."
+  (let* ((file-and-pos (nth 2 (car x)))
+         (file (car file-and-pos))
+         (pos (cdr file-and-pos)))
+    (with-current-buffer (find-file-noselect file)
+      (save-excursion
+        (goto-char pos)
+        (cond ((looking-back "\\(\\*/\\)\n*")
+               (goto-char (match-end 1))
+               (let ((end (point)))
+                 (comment-search-backward (point-min) t)
+                 (buffer-substring
+                  (point)
+                  (- end 2)))))))))
+
 ;; ——— Pretty priting ——————————————————————————————————————————————————————————
 (defun fa-fancy-string (wspace)
   "Return the string that corresponds to (nth fa-idx fa-lst).
@@ -525,6 +545,7 @@ WSPACE is the padding."
               (format "[%d of %d] " (+ fa-idx 1) (length fa-lst))
             ""))
          (padding-length (- wspace (+ 1 (length n-string))))
+         (padder (when (> padding-length 0) (make-string padding-length ?\ )))
          (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
                                                          (length (cdr x))))
                                           (cdr lst)))
@@ -538,12 +559,22 @@ WSPACE is the padding."
                  fa-comma))
          (args (mapcar #'fa-fancy-argument
                        (cdr lst)))
-         (args-current-cdr (nthcdr fa-arg args)))
+         (args-current-cdr (nthcdr fa-arg args))
+         comment)
     (when args-current-cdr
       (setcar args-current-cdr
               (fa-fancy-argument (nth fa-arg (cdr lst)) t)))
     (concat
-     (when (> padding-length 0) (make-string padding-length ?\ ))
+     (if (or (null fa-do-comments)
+             (null (setq comment (fa-get-comment lst))))
+         ""
+       (concat
+        (mapconcat (lambda (x)
+                     (concat " " padder x))
+                   (split-string comment "\n")
+                   "\n")
+        "\n"))
+     padder
      (propertize n-string 'face 'fa-face-hint-bold)
      " "
      fa-paren-open
