@@ -76,6 +76,7 @@
   :type '(choice
           (const :tag "Name only" name)
           (const :tag "Name and parens" name-and-parens)
+          (const :tag "Name, space, parens" name-space-parens)
           (const :tag "Name and parens and hint" name-and-parens-and-hint)))
 
 (defconst fa-hint-dark-color "gray20")
@@ -974,6 +975,9 @@ When PREFIX is not nil, erase it before inserting."
          (insert (semantic-tag-name candidate))
          (cl-case fa-insert-method
            (name)
+           (name-space-parens
+            (insert " ()")
+            (backward-char 1))
            (name-and-parens
             (insert "()")
             (backward-char 1))
