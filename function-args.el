@@ -44,6 +44,7 @@
   (require 'cl))
 (require 'semantic/ia)
 (require 'semantic/db-find)
+(require 'semantic-directory)
 
 ;; ——— Customization ———————————————————————————————————————————————————————————
 (defgroup function-args nil
@@ -631,7 +632,9 @@ It has the structure: (template type (file . position) arguments)."
           :pure-virtual-flag
           :throws
           :filename
-          :depth)
+          :depth
+          :truefile
+          :file)
          (pop r))
         (t (error "Unknown token %s" item))))
     (let ((argument-conses (mapcar
@@ -672,7 +675,7 @@ It has the structure: (template type (file . position) arguments)."
              ""
            (concat return-type " "))
          (propertize name 'face 'font-lock-function-name-face)
-         "("
+         " ("
          (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
                     argument-conses
                     ", ")
@@ -756,9 +759,11 @@ TYPE and NAME are strings."
                             (setq type (car type))
                             (setq face 'fa-face-type-compound))
                            ((null type)
-                            (setq type "#define")))
+                            (setq type "#define")
+                            (setq face 'font-lock-preprocessor-face)))
                      (format "%s%s%s %s"
-                             (if (semantic-tag-get-attribute tag :constant-flag)
+                             (if (and (semantic-tag-get-attribute tag :constant-flag)
+                                      (not (equal type "#define")))
                                  (propertize "const " 'face 'font-lock-keyword-face)
                                "")
                              (propertize type 'face face)
@@ -802,13 +807,26 @@ TYPE and NAME are strings."
   (interactive)
   (moo-propose #'moo-variablep))
 
+(defun moo-format-tag-line (str file)
+  (let ((width (min (window-width) 100)))
+    (when (or (null file)
+              (not (file-exists-p file)))
+      (error "Bad tag: %s" str))
+    (format (format "%%s%% %ds" (- width
+                                   (length str)))
+            str (file-name-nondirectory file))))
+
 (defun moo-jump-local ()
   "Select a tag to jump to from tags defined in current buffer."
   (interactive)
-  (let* ((tags (semantic-fetch-tags))
+  (let* ((tags (sd-fetch-tags
+                (append (file-expand-wildcards "*.cc")
+                        (file-expand-wildcards "*.hh"))))
          (preselect (moo-tag->str (semantic-current-tag)))
-         (preselect (when (stringp preselect)
-                      (regexp-quote preselect))))
+         (preselect (and preselect
+                         (if (memq moo-select-method '(helm helm-fuzzy))
+                             (regexp-quote preselect)
+                           preselect))))
     (moo-select-candidate
      (if (memq major-mode '(c++-mode c-mode))
          (delq nil
@@ -816,7 +834,10 @@ TYPE and NAME are strings."
                 (lambda (x)
                   (let ((s (moo-tag->str x)))
                     (when s
-                      (cons s x))))
+                      (cons
+                       (moo-format-tag-line
+                        s (semantic-tag-get-attribute x :truefile))
+                       x))))
                 (moo-flatten-namepaces tags)))
        tags)
      #'moo-action-jump
@@ -1005,7 +1026,8 @@ When PREFIX is not nil, erase it before inserting."
          (let ((ivy-height 20))
            (ivy-read "tag: " candidates
                      :preselect preselect
-                     :action action)))
+                     :action action
+                     :sort nil)))
 
         ((prog1 (eq moo-select-method 'helm)
            (require 'helm)
@@ -1029,11 +1051,29 @@ When PREFIX is not nil, erase it before inserting."
         (t
          (error "Bad `moo-select-method': %S" moo-select-method))))
 
+(when (version< emacs-version "25.1")
+  (eval-after-load 'etags
+    '(add-to-list 'byte-compile-not-obsolete-vars 'find-tag-marker-ring)))
+
 (defun moo-action-jump (tag)
-  (when (semantic-tag-p tag)
-    (push-mark)
-    (semantic-go-to-tag tag)
-    (switch-to-buffer (current-buffer))))
+  (with-selected-window (cl-case moo-select-method
+                          (ivy
+                           (ivy-state-window ivy-last))
+                          ((helm helm-fuzzy)
+                           (selected-window))
+                          (t
+                           (selected-window)))
+    (if (semantic-tag-p tag)
+        (progn
+          (let ((file-name (semantic-tag-get-attribute tag :truefile))
+                (ov (semantic-tag-overlay tag)))
+            (ring-insert
+             find-tag-marker-ring (point-marker))
+            (find-file file-name)
+            (goto-char (if (overlayp ov)
+                           (overlay-start ov)
+                         (aref ov 0)))))
+      (error "Unexpected tag: %S" tag))))
 
 (defun moo-propose (pred)
   "Display a list of current class members that satisfy PRED."
@@ -1494,7 +1534,7 @@ Returns TAG if it's not a typedef."
                   (func tags out depth)
                 (dolist (tag tags)
                   (cond ((and (not moo-do-includes)
-                          (or (moo-includep tag) (moo-usingp tag)))
+                              (or (moo-includep tag) (moo-usingp tag)))
                          ;; skip
                          )
 
@@ -1502,7 +1542,10 @@ Returns TAG if it's not a typedef."
                          (setq out
                                (namespace-reduce
                                 func
-                                (semantic-tag-get-attribute tag :members)
+                                (let ((truefile (semantic-tag-get-attribute tag :truefile)))
+                                  (mapcar (lambda (x)
+                                            (semantic-tag-put-attribute x :truefile truefile))
+                                          (semantic-tag-get-attribute tag :members)))
                                 (funcall func out tag depth)
                                 (1+ depth))))
 
