@@ -833,8 +833,10 @@ TYPE and NAME are strings."
   "Select a tag to jump to from tags defined in current buffer."
   (interactive)
   (let* ((tags (sd-fetch-tags
-                (append (file-expand-wildcards "*.cc")
-                        (file-expand-wildcards "*.hh"))))
+                (cl-remove-if (lambda (x)
+                                (string-match "^\\.#" x))
+                              (append (file-expand-wildcards "*.cc")
+                                      (file-expand-wildcards "*.hh")))))
          (preselect (moo-tag->str (semantic-current-tag)))
          (preselect (and preselect
                          (if (memq moo-select-method '(helm helm-fuzzy))
