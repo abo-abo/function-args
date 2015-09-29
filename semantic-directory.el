@@ -55,8 +55,11 @@
 
 (defun sd-fetch-tags (file-list)
   "Get a list of tags for FILE-LIST."
-  (let (res dbfile db-to-save)
+  (let ((file-count (length file-list))
+        (i 0)
+        res dbfile db-to-save)
     (dolist (file file-list)
+      (message "Parsing ... (%d/%d)" (cl-incf i) file-count)
       (let ((file-modtime (nth 5 (file-attributes file 'integer)))
             (exfile (expand-file-name file)))
         (unless (and (null sd-force-reparse)

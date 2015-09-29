@@ -821,13 +821,19 @@ TYPE and NAME are strings."
   (moo-propose #'moo-variablep))
 
 (defun moo-format-tag-line (str file)
-  (let ((width (min (window-width) 100)))
+  (let ((width (window-width))
+        (col (max 70 (- (window-width) 20))))
     (when (or (null file)
               (not (file-exists-p file)))
       (error "Bad tag: %s" str))
+    (when (> (length str) col)
+      (setq str
+            (concat (substring str 0 (- col 4))
+                    " ...")))
     (format (format "%%s%% %ds" (- width
                                    (length str)))
-            str (file-name-nondirectory file))))
+            str
+            (file-name-nondirectory file))))
 
 (defun moo-jump-local ()
   "Select a tag to jump to from tags defined in current buffer."
@@ -836,8 +842,11 @@ TYPE and NAME are strings."
                 (cl-remove-if (lambda (x)
                                 (string-match "^\\.#" x))
                               (append (file-expand-wildcards "*.cc")
-                                      (file-expand-wildcards "*.hh")))))
-         (preselect (moo-tag->str (semantic-current-tag)))
+                                      (file-expand-wildcards "*.c")
+                                      (file-expand-wildcards "*.hh")
+                                      (file-expand-wildcards "*.h")
+                                      (file-expand-wildcards "*.hpp")))))
+         (preselect (car (semantic-current-tag)))
          (preselect (and preselect
                          (if (memq moo-select-method '(helm helm-fuzzy))
                              (regexp-quote preselect)
@@ -1044,6 +1053,7 @@ When PREFIX is not nil, erase it before inserting."
            (ivy-read "tag: " candidates
                      :preselect preselect
                      :action action
+                     :require-match t
                      :sort nil)))
 
         ((prog1 (eq moo-select-method 'helm)
