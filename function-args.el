@@ -531,6 +531,25 @@ When ARG is not nil offer only variables as candidates."
 Avoid byte compiler warnings."
   (looking-back x (line-beginning-position)))
 
+(defun fa--in-comment-p ()
+  "Test if point is inside a comment."
+  (save-excursion
+    (unless (eolp)
+      (forward-char 1))
+    (nth 4 (syntax-ppss))))
+
+(defun fa--bounds-comment ()
+  (comment-beginning)
+  (comment-normalize-vars)
+  (beginning-of-line)
+  (let ((cs (comment-search-forward (line-end-position) t)))
+    (when cs
+      (goto-char cs)
+      (skip-syntax-backward " ")
+      (setq cs (point))
+      (comment-forward)
+      (cons cs (point)))))
+
 (defun fa-get-comment (x)
   "Try to extract the declaration comment from X.
 X is an element of `fa-lst'."
@@ -540,13 +559,15 @@ X is an element of `fa-lst'."
     (with-current-buffer (find-file-noselect file)
       (save-excursion
         (goto-char pos)
-        (cond ((fa-looking-back "\\(\\*/\\)\n*")
-               (goto-char (match-end 1))
-               (let ((end (point)))
-                 (comment-search-backward (point-min) t)
+        (cond ((progn
+                 (skip-chars-backward " \t\n")
+                 (move-beginning-of-line 1)
+                 (forward-char 1)
+                 (fa--in-comment-p))
+               (let ((bnd (fa--bounds-comment)))
                  (buffer-substring
-                  (point)
-                  (- end 2)))))))))
+                  (car bnd)
+                  (cdr bnd)))))))))
 
 ;; ——— Pretty priting ——————————————————————————————————————————————————————————
 (defun fa-fancy-string (wspace)
