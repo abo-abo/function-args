@@ -1021,14 +1021,17 @@ PARAMS are passed further to `moo-action-insert'."
     ;; multiple candidates with different names
     (t
      (moo-select-candidate
-      (mapcar 'moo-tag->cons candidates)
+      (delq nil
+            (mapcar 'moo-tag->cons candidates))
       (lambda (x) (moo-action-insert x params prefix))))))
 
 (defun moo-tag->cons (tag)
   "Return for TAG a cons (TAG . STR).
 STR is the result of `moo-tag->str' on TAG,
 NAME is the TAG name."
-  (cons (moo-tag->str tag) tag))
+  (let ((tag-name (moo-tag->str tag)))
+    (when tag-name
+      (cons tag-name tag))))
 
 (defun moo-action-insert (candidate formatter &optional prefix)
   "Insert tag CANDIDATE.
