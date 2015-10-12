@@ -707,7 +707,9 @@ It has the structure: (template type (file . position) arguments)."
                'font-lock-keyword-face))
          (if constructor-flag-p
              ""
-           (concat return-type " "))
+           (if (string-match "\\*$" return-type)
+               return-type
+             (concat return-type " ")))
          (propertize name 'face 'font-lock-function-name-face)
          " ("
          (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
