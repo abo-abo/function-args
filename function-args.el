@@ -858,35 +858,44 @@ TYPE and NAME are strings."
             str
             (file-name-nondirectory file))))
 
-(defun moo-jump-local ()
-  "Select a tag to jump to from tags defined in current buffer."
-  (interactive)
-  (let* ((tags (sd-fetch-tags
-                (cl-remove-if (lambda (x)
-                                (string-match "^\\.#" x))
-                              (append (file-expand-wildcards "*.cc")
-                                      (file-expand-wildcards "*.c")
-                                      (file-expand-wildcards "*.hh")
-                                      (file-expand-wildcards "*.h")
-                                      (file-expand-wildcards "*.hpp")))))
+(defvar moo-jump-local-cache (make-hash-table :test 'equal))
+
+(defun moo-jump-local (arg)
+  "Select a tag to jump to from tags defined in current buffer.
+When ARG is non-nil, regenerate tags."
+  (interactive "P")
+  (let* ((file-list (cl-remove-if
+                     (lambda (x)
+                       (string-match "^\\.#" x))
+                     (append (file-expand-wildcards "*.cc")
+                             (file-expand-wildcards "*.c")
+                             (file-expand-wildcards "*.hh")
+                             (file-expand-wildcards "*.h")
+                             (file-expand-wildcards "*.hpp"))))
+         (ready-tags
+          (or (and (null arg) (gethash file-list moo-jump-local-cache))
+              (let ((tags (sd-fetch-tags file-list)))
+                (when (memq major-mode '(c++-mode c-mode))
+                  (setq tags
+                        (delq nil
+                              (mapcar
+                               (lambda (x)
+                                 (let ((s (moo-tag->str x)))
+                                   (when s
+                                     (cons
+                                      (moo-format-tag-line
+                                       s (semantic-tag-get-attribute x :truefile))
+                                      x))))
+                               (moo-flatten-namepaces tags)))))
+                (puthash file-list tags moo-jump-local-cache)
+                tags)))
          (preselect (car (semantic-current-tag)))
          (preselect (and preselect
                          (if (memq moo-select-method '(helm helm-fuzzy))
                              (regexp-quote preselect)
                            preselect))))
     (moo-select-candidate
-     (if (memq major-mode '(c++-mode c-mode))
-         (delq nil
-               (mapcar
-                (lambda (x)
-                  (let ((s (moo-tag->str x)))
-                    (when s
-                      (cons
-                       (moo-format-tag-line
-                        s (semantic-tag-get-attribute x :truefile))
-                       x))))
-                (moo-flatten-namepaces tags)))
-       tags)
+     ready-tags
      #'moo-action-jump
      preselect)))
 
@@ -1075,7 +1084,7 @@ When PREFIX is not nil, erase it before inserting."
 
         ((eq moo-select-method 'ivy)
          (require 'ivy)
-         (let ((ivy-height 20))
+         (let ((ivy-height 15))
            (ivy-read "tag: " candidates
                      :preselect preselect
                      :action action
