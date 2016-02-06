@@ -257,7 +257,7 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
   (if fa-timer
       (progn
         (cancel-timer fa-timer)
-        (setq fa-timer))
+        (setq fa-timer nil))
     (setq fa-timer (run-with-idle-timer fa-delay t #'fa-show-wrapper))))
 
 ;; ——— Interactive functions ———————————————————————————————————————————————————
@@ -1536,7 +1536,7 @@ Returns TAG if it's not a typedef."
                               (or (gethash parent-name fa-superclasses)
                                   (puthash parent-name (moo-stype->tag parent-name) fa-superclasses)))
                         (when (eq parent-tag t)
-                          (setq parent-tag)))
+                          (setq parent-tag nil)))
                       ;; don't inherit constructors
                       (cl-delete-if #'moo-constructorp
                                     (moo-ttype->tmembers parent-tag)))
@@ -1682,7 +1682,7 @@ Returns TAG if it's not a typedef."
               (setq name (match-string-no-properties 1))
               ;; check if there's a mess up
               (when (re-search-backward "{" defun-start t)
-                (setq name)))
+                (setq name nil)))
             (cons name template))))))
 
 (defun moo-list-at-point ()
