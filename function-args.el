@@ -1118,6 +1118,7 @@ When PREFIX is not nil, erase it before inserting."
     '(add-to-list 'byte-compile-not-obsolete-vars 'find-tag-marker-ring)))
 
 (defun moo-action-jump (tag)
+  (setq tag (cdr tag))
   (with-selected-window (cl-case moo-select-method
                           (ivy
                            (ivy-state-window ivy-last))
