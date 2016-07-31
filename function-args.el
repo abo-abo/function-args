@@ -199,7 +199,8 @@
   (define-key map (kbd "M-h") 'fa-idx-cycle-up)
   (define-key map (kbd "M-u") 'fa-abort)
   (define-key map (kbd "M-j") 'fa-jump-maybe)
-  (define-key map (kbd "C-M-j") 'moo-jump-local))
+  (define-key map (kbd "C-M-j") 'moo-jump-directory)
+  (define-key map (kbd "C-M-k") 'moo-jump-local))
 
 (defvar fa-overlay nil
   "Hint overlay instance.")
@@ -304,40 +305,53 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
         (goto-char
          (cdr tag))))))
 
+(defun moo-complete--candidates (&optional only-class)
+  (let ((symbol (moo-ctxt-current-symbol))
+        prefix candidates)
+    (cond
+      ((= (length symbol) 2)
+       ;; either var.prefix or var->prefix
+       (setq prefix (cadr symbol))
+       (setq candidates (moo-complete-candidates-2 prefix (car symbol))))
+      ((= (length symbol) 1)
+       (setq prefix (car symbol))
+       (setq candidates (moo-complete-candidates-1 prefix))
+       (when only-class
+         (setq candidates
+               (moo-filter-tag-by-class 'variable candidates))))
+      ((= (length symbol) 3)
+       (setq prefix (caddr symbol))
+       (setq candidates
+             (or (moo-ttype->tmembers
+                  (moo-complete-type-member
+                   (car (moo-complete-candidates-2 (cadr symbol) (car symbol)))))
+                 (semantic-analyze-possible-completions
+                  (semantic-analyze-current-context (point)))))))
+    (cons prefix candidates)))
+
 (defun moo-complete (arg)
   "Complete current C++ symbol at point.
 When ARG is not nil offer only variables as candidates."
   (interactive "P")
-  (let ((symbol (moo-ctxt-current-symbol))
-        prefix candidates)
-    (if (cond
-          ;; ———  ————————————————————————————————————————————————————————————————————
-          ((= (length symbol) 2)
-           ;; either var.prefix or var->prefix
-           (setq prefix (cadr symbol))
-           (setq candidates (moo-complete-candidates-2 prefix (car symbol))))
-          ;; ———  ————————————————————————————————————————————————————————————————————
-          ((= (length symbol) 1)
-           (setq prefix (car symbol))
-           (setq candidates (moo-complete-candidates-1 prefix))
-           (if arg
-               (setq candidates
-                     (moo-filter-tag-by-class 'variable candidates))
-             t))
-          ;; ———  ————————————————————————————————————————————————————————————————————
-          ((= (length symbol) 3)
-           (setq prefix (caddr symbol))
-           (setq candidates
-                 (or (moo-ttype->tmembers
-                      (moo-complete-type-member
-                       (car (moo-complete-candidates-2 (cadr symbol) (car symbol)))))
-                     (semantic-analyze-possible-completions
-                      (semantic-analyze-current-context (point)))))))
+  (cl-destructuring-bind (prefix . candidates) (moo-complete--candidates arg)
+    (if candidates
         (moo-handle-completion
          prefix
          (cl-delete-duplicates candidates :test #'moo-tag=))
-      ;; ———  ————————————————————————————————————————————————————————————————————————
       (semantic-ia-complete-symbol (point)))))
+
+(defun moo-completion-at-point ()
+  (let ((bnd (semantic-ctxt-current-symbol-and-bounds))
+        beg end)
+    (if bnd
+        (progn
+          (setq beg (caar (cddr bnd)))
+          (setq end (cdar (cddr bnd))))
+      (setq beg (point))
+      (setq end (point)))
+    (list
+     beg end (mapcar #'semantic-tag-name
+                     (cdr (moo-complete--candidates))))))
 
 ;; ——— Predicates ——————————————————————————————————————————————————————————————
 (defmacro fa-and (&rest predicates)
@@ -860,8 +874,43 @@ TYPE and NAME are strings."
 
 (defvar moo-jump-local-cache (make-hash-table :test 'equal))
 
-(defun moo-jump-local (arg)
-  "Select a tag to jump to from tags defined in current buffer.
+(defvar moo-jump-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-M-j")
+      (lambda ()
+        (interactive)
+        (ivy-exit-with-action
+         (lambda (_)
+           (moo-jump-directory nil ivy-text)))))
+    (define-key map (kbd "C-M-k")
+      (lambda ()
+        (interactive)
+        (ivy-call)
+        (let ((buf (with-ivy-window (current-buffer))))
+          (ivy-exit-with-action
+           `(lambda (_)
+              (switch-to-buffer ,buf)
+              (moo-jump-local ivy-text))))))
+    map))
+
+(defun moo-jump-local (&optional initial-input)
+  "Jump to a tag in the current file."
+  (interactive)
+  (ivy-read "tag: "
+            (delq nil
+                  (mapcar
+                   (lambda (x)
+                     (let ((s (moo-tag->str x)))
+                       (when s
+                         (cons s x))))
+                   (semantic-fetch-tags)))
+            :initial-input initial-input
+            :action #'moo-action-jump
+            :keymap moo-jump-keymap
+            :preselect (car (semantic-current-tag))))
+
+(defun moo-jump-directory (arg &optional initial-input)
+  "Select a tag to jump to from tags defined in current directory.
 When ARG is non-nil, regenerate tags."
   (interactive "P")
   (let* ((file-list (cl-remove-if
@@ -897,7 +946,8 @@ When ARG is non-nil, regenerate tags."
     (moo-select-candidate
      ready-tags
      #'moo-action-jump
-     preselect)))
+     preselect
+     initial-input)))
 
 (defun moo-reset-superclasses-cache ()
   "Reset `fa-superclasses'."
@@ -1076,7 +1126,7 @@ When PREFIX is not nil, erase it before inserting."
 
 (defvar ivy-height)
 
-(defun moo-select-candidate (candidates action &optional preselect)
+(defun moo-select-candidate (candidates action &optional preselect initial-input)
   (cond ((eq moo-select-method 'display-completion-list)
          (with-output-to-temp-buffer "*moo-jump*"
            (display-completion-list
@@ -1089,7 +1139,10 @@ When PREFIX is not nil, erase it before inserting."
                      :preselect preselect
                      :action action
                      :require-match t
-                     :sort nil)))
+                     :sort nil
+                     :keymap moo-jump-keymap
+                     :initial-input initial-input
+                     :caller 'moo-select-candidate)))
 
         ((prog1 (eq moo-select-method 'helm)
            (require 'helm)
@@ -1132,7 +1185,8 @@ When PREFIX is not nil, erase it before inserting."
                 (ov (semantic-tag-overlay tag)))
             (ring-insert
              find-tag-marker-ring (point-marker))
-            (find-file file-name)
+            (when file-name
+              (find-file file-name))
             (goto-char (if (overlayp ov)
                            (overlay-start ov)
                          (aref ov 0)))))
