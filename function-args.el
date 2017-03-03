@@ -903,7 +903,8 @@ TYPE and NAME are strings."
                      (let ((s (moo-tag->str x)))
                        (when s
                          (cons s x))))
-                   (semantic-fetch-tags)))
+                   (moo-flatten-namepaces
+                    (semantic-fetch-tags))))
             :initial-input initial-input
             :action #'moo-action-jump
             :keymap moo-jump-keymap
