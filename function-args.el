@@ -1098,6 +1098,8 @@ NAME is the TAG name."
 (defun moo-action-insert (candidate formatter &optional prefix)
   "Insert tag CANDIDATE.
 When PREFIX is not nil, erase it before inserting."
+  (when (stringp (cadr candidate))
+    (setq candidate (cdr candidate)))
   (when prefix
     (moo-erase-string prefix))
   (cond ((eq formatter 'full-tag)
