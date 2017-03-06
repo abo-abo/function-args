@@ -1169,6 +1169,13 @@ When PREFIX is not nil, erase it before inserting."
         (t
          (error "Bad `moo-select-method': %S" moo-select-method))))
 
+(defun moo-action-implement (tag)
+  (with-ivy-window
+    (insert (moo-tag->str tag))))
+
+(ivy-set-actions 'moo-select-candidate
+                 '(("i" moo-action-implement "implement")))
+
 (when (version< emacs-version "25.1")
   (eval-after-load 'etags
     '(add-to-list 'byte-compile-not-obsolete-vars 'find-tag-marker-ring)))
