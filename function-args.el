@@ -199,8 +199,8 @@
   (define-key map (kbd "M-h") 'fa-idx-cycle-up)
   (define-key map (kbd "M-u") 'fa-abort)
   (define-key map (kbd "M-j") 'fa-jump-maybe)
-  (define-key map (kbd "C-M-j") 'moo-jump-directory)
-  (define-key map (kbd "C-M-k") 'moo-jump-local))
+  (define-key map (kbd "C-M-j") 'moo-jump-local)
+  (define-key map (kbd "C-M-k") 'moo-jump-directory))
 
 (defvar fa-overlay nil
   "Hint overlay instance.")
