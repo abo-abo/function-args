@@ -1554,7 +1554,8 @@ This includes the constructors of types with name STR."
              (filter
               (lambda (x) (and (moo-typep x) (semantic-tag-get-attribute x :members)))
               (moo-desperately-find-sname str)))))
-    (cond ((= 0 (length candidates)))
+    (cond ((= 0 (length candidates))
+           nil)
           ((= 1 (length candidates))
            (car candidates))
           (t (error "`moo-stype->tag': too many candidates")))))
