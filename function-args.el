@@ -46,6 +46,7 @@
 (require 'semantic/ia)
 (require 'semantic/db-find)
 (require 'semantic-directory)
+(require 'json)
 (defvar ivy-last)
 (declare-function ivy-read "ext:ivy")
 (declare-function ivy-state-window "ext:ivy")
@@ -339,6 +340,70 @@ When ARG is not nil offer only variables as candidates."
          prefix
          (cl-delete-duplicates candidates :test #'moo-tag=))
       (semantic-ia-complete-symbol (point)))))
+
+(defun moo-files-in-directory (prefix dir)
+  (let ((default-directory dir))
+    (delete
+     "../"
+     (delete
+      "./"
+      (all-completions prefix 'read-file-name-internal)))))
+
+(defun moo-locate-compile-commands-json ()
+  (let ((base "compile_commands.json")
+        (templates '("./" "./build/" "../build/"))
+        dir
+        name)
+    (while (setq dir (pop templates))
+      (if (file-exists-p
+           (setq name (expand-file-name base dir)))
+          (setq templates nil)
+        (setq name nil)))
+    name))
+
+(defun moo-headers-directories-default ()
+  (let* ((cmd "gcc -Wp,-v -x c++ - -fsyntax-only")
+         (out (shell-command-to-string cmd)))
+    (if out
+        (if (string-match "#include <...> search starts here:\n\\([^^]*\\)End of search" out)
+            (split-string (match-string 1 out))
+          (error "unexpected content: %s" out))
+      (error "unexpected output: %s" cmd))))
+
+(defun moo-headers-directories ()
+  (let ((compile-commands (moo-locate-compile-commands-json))
+        (default-includes (moo-headers-directories-default)))
+    (if compile-commands
+        (let* ((json (json-read-file compile-commands))
+               (file (buffer-file-name))
+               (entry (cl-find-if (lambda (x) (equal file (cdr (assoc 'file x))))
+                                  json)))
+          (if entry
+              (let* ((cmd (cdr (assoc 'command entry)))
+                     (start -1)
+                     includes)
+                (while (setq start (string-match "-I\\(/[^q ]+\\) " cmd (1+ start)))
+                  (push (file-name-as-directory (match-string 1 cmd)) includes))
+                (append default-includes (nreverse includes)))
+            (error "File %s not found in %s"
+                   (buffer-file-name)
+                   compile-commands)))
+      default-includes)))
+
+(defun moo-completion-headers ()
+  (when (looking-back "^#include *\\(?:\"\\|<\\)\\(.*\\)")
+    (let* ((sym (match-string-no-properties 1))
+           (beg (match-beginning 1))
+           (end (match-end 1))
+           (cands (delete-dups
+                   (cl-mapcan
+                    (lambda (dir)
+                      (moo-files-in-directory sym dir))
+                    (moo-headers-directories)))))
+      (when (string-match "/\\([^/]*\\)$" sym)
+        (cl-incf beg (match-beginning 1))
+        (setq sym (match-string 1)))
+      (list beg end cands))))
 
 (defun moo-completion-at-point ()
   (let ((bnd (semantic-ctxt-current-symbol-and-bounds))
