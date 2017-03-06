@@ -1302,12 +1302,24 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                        ;; is it a usual pointer or a smart pointer?
                        (if var-pointer-p
                            (moo-complete-type-member var-tag)
-                         (let ((type-template (semantic-tag-get-attribute
-                                               (semantic-tag-get-attribute var-tag :type)
-                                               :template-specifier)))
-                           ;; assume that the first template parameter is the relevant one
-                           ;; (normally, there should be only one anyway)
-                           (moo-stype->tag (caar type-template)))))
+                         (let ((type (semantic-tag-get-attribute var-tag :type)))
+                           (cond ((listp type)
+                                  (let ((template-specifier
+                                         (semantic-tag-get-attribute
+                                          type
+                                          :template-specifier)))
+                                    (if template-specifier
+                                        ;; assume that the first template parameter is the relevant one
+                                        ;; (normally, there should be only one anyway)
+                                        (moo-stype->tag (caar template-specifier))
+                                      (car (moo-desperately-find-sname
+                                            (semantic-tag-name type))))))
+                                 ((equal type "struct")
+                                  (if (eq (semantic-tag-class var-tag) 'type)
+                                      var-tag
+                                    (error "unexpected")))
+                                 (t
+                                  (error "unexpected"))))))
                       ;; otherwise just get its type
                       (t
                        (cond ((moo-typep var-tag)
