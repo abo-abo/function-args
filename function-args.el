@@ -958,18 +958,20 @@ TYPE and NAME are strings."
               (moo-jump-local ivy-text))))))
     map))
 
+(defun moo-fetch-tags ()
+  (delq nil
+        (mapcar
+         (lambda (x)
+           (let ((s (moo-tag->str x)))
+             (when s
+               (cons s x))))
+         (moo-flatten-namepaces
+          (semantic-fetch-tags)))))
+
 (defun moo-jump-local (&optional initial-input)
   "Jump to a tag in the current file."
   (interactive)
-  (ivy-read "tag: "
-            (delq nil
-                  (mapcar
-                   (lambda (x)
-                     (let ((s (moo-tag->str x)))
-                       (when s
-                         (cons s x))))
-                   (moo-flatten-namepaces
-                    (semantic-fetch-tags))))
+  (ivy-read "tag: " (moo-fetch-tags)
             :initial-input initial-input
             :action #'moo-action-jump
             :keymap moo-jump-keymap
