@@ -979,6 +979,40 @@ TYPE and NAME are strings."
             :keymap moo-jump-keymap
             :preselect (car (semantic-current-tag))))
 
+(defun moo-implement-action (x)
+  (let* ((tag (cdr x))
+         (argument-conses
+          (mapcar
+           #'fa-variable->cons
+           (mapcar
+            (lambda (x) (unless (stringp (car x)) (setcar x "")) x)
+            (semantic-tag-get-attribute tag :arguments)))))
+    (insert (semantic-tag-type tag) " ")
+    (insert (semantic-tag-get-attribute tag :parent) "::")
+    (insert (semantic-tag-name tag))
+    (insert "("
+            (mapconcat (lambda (x) (concat (car x) " " (cdr x))) argument-conses ", ")
+            ")")
+    (insert "{\n  \n}")
+    (backward-char 2)))
+
+(defun moo-implement ()
+  "Implement a class method.
+Currently, the class has to be in the current buffer."
+  (interactive)
+  (let ((cands
+         (mapcar (lambda (x)
+                   (cons
+                    (concat (semantic-tag-get-attribute x :parent)
+                            "::"
+                            (moo-tag->str x))
+                    x))
+                 (cl-remove-if-not #'moo-functionp
+                                   (moo-flatten-namepaces
+                                    (semantic-fetch-tags))))))
+    (ivy-read "class: " cands
+              :action 'moo-implement-action)))
+
 (defun moo-jump-directory (arg &optional initial-input)
   "Select a tag to jump to from tags defined in current directory.
 When ARG is non-nil, regenerate tags."
