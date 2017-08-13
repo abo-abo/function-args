@@ -1831,8 +1831,8 @@ Returns TAG if it's not a typedef."
               (up-list)
               (backward-list))
             ;; TODO take care of nested classes
-            (if (fa-looking-back
-                 "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\)[: \t\n]+[^{;]*?")
+            (if (looking-back
+                 "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\).*\n")
                 (progn
                   (goto-char (match-beginning 0))
                   (setq name (match-string-no-properties 1))
