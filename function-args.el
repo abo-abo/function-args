@@ -1627,20 +1627,14 @@ This includes the constructors of types with name STR."
     (let ((ctxt (semantic-analyze-current-context (point))))
       (if (null ctxt)
           (error "Nothing under cursor")
-        ;; (setq ctxt (car (oref ctxt prefix)))
         (setq ctxt (car (reverse (oref ctxt prefix))))
         (ignore-errors
           (cond ((stringp ctxt)
-                 (or (moo-tag-at-point ctxt) ctxt))
-                ;; check if variable constructor initialization is mistaken
-                ;; for function prototype definition:
-                ;; ((and (moo-functionp ctxt)
-                ;;       (moo-prototype-flag-p ctxt)
-                ;;       (let ((arg1 (caar (semantic-tag-get-attribute ctxt :arguments))))
-                ;;         (and arg1 (stringp arg1) (string= arg1 ""))))
-                ;;  (or (ignore-errors
-                ;;        (moo-tag-at-point (car (semantic-tag-get-attribute ctxt :type))))
-                ;;      (semantic-tag-get-attribute ctxt :type)))
+                 (or (moo-tag-at-point
+                      ctxt
+                      (lambda (tag)
+                        (semantic-tag-of-class-p tag 'type)))
+                     ctxt))
                 (t
                  ctxt)))))))
 
