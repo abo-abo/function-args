@@ -1775,7 +1775,8 @@ Returns TAG if it's not a typedef."
                                 func
                                 (let ((truefile (semantic-tag-get-attribute tag :truefile)))
                                   (mapcar (lambda (x)
-                                            (semantic-tag-put-attribute x :truefile truefile))
+                                            (semantic-tag-put-attribute x :truefile truefile)
+                                            (semantic-tag-put-attribute x :parent (semantic-tag-name tag)))
                                           (semantic-tag-get-attribute tag :members)))
                                 (funcall func out tag depth)
                                 (1+ depth))))
