@@ -195,7 +195,7 @@
 
 (let ((map function-args-mode-map))
   (define-key map (kbd "M-o") 'moo-complete)
-  (define-key map (kbd "M-i") 'fa-show)
+  (define-key map (kbd "C-2") 'fa-show)
   (define-key map (kbd "M-n") 'fa-idx-cycle-down)
   (define-key map (kbd "M-h") 'fa-idx-cycle-up)
   (define-key map (kbd "M-u") 'fa-abort)
@@ -266,15 +266,17 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
 (defun fa-show ()
   "Display the arguments of the closest function."
   (interactive)
-  (save-excursion
-    (fa-do-position)
-    (setq fa-lst (fa-calculate))
-    (setq fa-hint-pos (point))
-    (setq fa-idx 0))
-  (if (eq (length fa-lst) 0)
-      (message "nothing found")
-    (fa-update-arg)
-    (fa-start-tracking)))
+  (if (overlayp fa-overlay)
+      (fa-abort)
+    (save-excursion
+      (fa-do-position)
+      (setq fa-lst (fa-calculate))
+      (setq fa-hint-pos (point))
+      (setq fa-idx 0))
+    (if (eq (length fa-lst) 0)
+        (message "nothing found")
+      (fa-update-arg)
+      (fa-start-tracking))))
 
 (defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
