@@ -1327,12 +1327,7 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
      str
      `(lambda (x)
         (and (not (semantic-tag-get-attribute x :prototype))
-             ,(if predicate `(,predicate x) t)
-             (or (not (moo-variablep x))
-                 (equal ,class-name
-                        (save-excursion
-                          (goto-char (moo-tget-beginning-position x))
-                          (moo-c++-class-name)))))))))
+             ,(if predicate `(,predicate x) t))))))
 
 (defun moo-type-tag-at-point (str)
   (moo-tag-at-point-generic
@@ -1435,13 +1430,13 @@ Optional PREDICATE is used to improve uniqueness of returned tag."
                   #'identity)
                  ;; wildcard
                  ((eq ?_ (aref prefix 0))
-                  `(lambda(x) (cl-search ,(substring prefix 1) (downcase (car x)))))
+                  `(lambda (x) (cl-search ,(substring prefix 1) (downcase (car x)))))
                  ;; case-sensitive
                  ((fa-char-upcasep (aref prefix 0))
-                  (lambda(x) (eq 0 (cl-search prefix (car x)))))
+                  (lambda (x) (eq 0 (cl-search prefix (car x)))))
                  ;; case-insensitive
                  (t
-                  `(lambda(x) (eq 0 (cl-search ,(downcase prefix) (downcase (car x)))))))))
+                  `(lambda (x) (eq 0 (cl-search ,(downcase prefix) (downcase (car x)))))))))
     (filter pred tmembers)))
 
 (defun moo-complete-candidates-1 (prefix)
