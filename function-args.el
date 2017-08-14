@@ -1228,7 +1228,8 @@ When PREFIX is not nil, erase it before inserting."
               (stringp (car candidate)))
          (insert (car candidate)))
         (t
-         (error "Unexpected"))))
+         (error "Unexpected")))
+  (indent-for-tab-command))
 
 (defvar ivy-height)
 
