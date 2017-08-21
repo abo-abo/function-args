@@ -1,11 +1,11 @@
 ;;; function-args.el --- C++ completion for GNU Emacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 2013-2014  Oleh Krehel
+;; Copyright (C) 2013-2017  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/function-args
-;; Version: 0.5.1
-;; Package-Requires: ((swiper "0.2.0"))
+;; Version: 0.6.0
+;; Package-Requires: ((ivy "0.9.1"))
 
 ;; This file is not part of GNU Emacs
 
@@ -770,7 +770,7 @@ It has the structure: (template type (file . position) arguments)."
                    (if type-p
                        (propertize (fa-type->str type-p) 'face 'font-lock-type-face)
                      "?")
-                   (if pointer-p " *" ""))))
+                   (if pointer-p "*" ""))))
       (if (null output-string)
           (cons
            ;; name and type part
@@ -833,14 +833,14 @@ TYPE and NAME are strings."
          (pop r))
         (t (error "Unknown token %s" item))))
     (cons (concat (and constant-flag-p (propertize "const " 'face 'font-lock-keyword-face))
-                  (propertize (fa-type->str type-p) 'face 'font-lock-type-face))
-          (concat (and reference-p "&")
-                  (and pointer-p "*")
-                  ;; pretty up std:: identifiers
-                  (replace-regexp-in-string "^_+" "" name)
-                  (and dereference-p "[]")
-                  (and default-value-p (format " = %s"
-                                               default-value-p))))))
+                  (propertize (fa-type->str type-p) 'face 'font-lock-type-face)
+                  (and reference-p "&")
+                  (and pointer-p "*"))
+          (concat
+           ;; pretty up std:: identifiers
+           (replace-regexp-in-string "^_+" "" name)
+           (and dereference-p "[]")
+           (and default-value-p (format " = %s" default-value-p))))))
 
 (defun fa-type->str (tag)
   "Return string representation of type TAG."
@@ -985,26 +985,47 @@ TYPE and NAME are strings."
             :preselect (car (semantic-current-tag))))
 
 (defun moo-implement-action (x)
+  (delete-region ivy-completion-beg ivy-completion-end)
   (let* ((tag (cdr x))
          (argument-conses
           (mapcar
            #'fa-variable->cons
            (mapcar
             (lambda (x) (unless (stringp (car x)) (setcar x "")) x)
-            (semantic-tag-get-attribute tag :arguments)))))
-    (insert (semantic-tag-type tag) " ")
-    (insert (semantic-tag-get-attribute tag :parent) "::")
+            (semantic-tag-get-attribute tag :arguments))))
+         (return-type (semantic-tag-type tag))
+         (return-type
+          (if (stringp return-type)
+              return-type
+            (moo-tag->str return-type)))
+         (scope (semantic-tag-get-attribute tag :parent)))
+    ;; constructor?
+    (unless (equal return-type scope)
+      (insert return-type
+              (if (semantic-tag-get-attribute tag :pointer)
+                  "*"
+                "")
+              " "))
+    (insert scope "::")
     (insert (semantic-tag-name tag))
     (insert "("
-            (mapconcat (lambda (x) (concat (car x) " " (cdr x))) argument-conses ", ")
+            (mapconcat (lambda (x)
+                         (concat (car x)
+                                 (if (string= (cdr x) "")
+                                     ""
+                                   (concat " " (cdr x)))))
+                       argument-conses ", ")
             ")")
-    (insert "{\n  \n}")
+    (insert " {\n  \n}")
+    (setq ivy-completion-end (point))
     (backward-char 2)))
 
 (defun moo-implement ()
   "Implement a class method.
 Currently, the class has to be in the current buffer."
   (interactive)
+  (setq ivy-completion-beg (point))
+  (setq ivy-completion-end (point))
   (let ((cands
          (mapcar (lambda (x)
                    (cons
@@ -1014,7 +1035,9 @@ Currently, the class has to be in the current buffer."
                     x))
                  (cl-remove-if-not #'moo-functionp
                                    (moo-flatten-namepaces
-                                    (semantic-fetch-tags))))))
+                                    (cl-remove-if-not
+                                     #'moo-typep
+                                     (semantic-fetch-tags)))))))
     (ivy-read "class: " cands
               :action 'moo-implement-action)))
 
