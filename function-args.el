@@ -716,6 +716,9 @@ Select bold faces when BOLD is t."
      (propertize (cdr cel) 'face
                  (if bold 'fa-face-hint-bold 'fa-face-hint)))))
 
+(defvar fa-space-before-function-args ""
+  "Variable used when displaying a function tag.")
+
 (defun fa-tfunction->fal (tag &optional output-string)
   "Return function argument list structure for TAG.
 It has the structure: (template type (file . position) arguments)."
@@ -788,12 +791,14 @@ It has the structure: (template type (file . position) arguments)."
                'font-lock-keyword-face))
          (if constructor-flag-p
              ""
-           (if (string-match "\\*$" return-type)
-               return-type
-             (concat return-type " ")))
+           (concat return-type " "))
          (propertize name 'face 'font-lock-function-name-face)
-         " ("
-         (mapconcat (lambda (x) (concat (car x) " " (cdr x)))
+         fa-space-before-function-args
+         "("
+         (mapconcat (lambda (x)
+                      (if (string= (cdr x) "")
+                          (car x)
+                        (concat (car x) " " (cdr x))))
                     argument-conses
                     ", ")
          ")"
