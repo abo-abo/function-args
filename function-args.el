@@ -1024,22 +1024,25 @@ TYPE and NAME are strings."
   "Implement a class method.
 Currently, the class has to be in the current buffer."
   (interactive)
-  (setq ivy-completion-beg (point))
-  (setq ivy-completion-end (point))
-  (let ((cands
-         (mapcar (lambda (x)
-                   (cons
-                    (concat (semantic-tag-get-attribute x :parent)
-                            "::"
-                            (moo-tag->str x))
-                    x))
-                 (cl-remove-if-not #'moo-functionp
-                                   (moo-flatten-namepaces
-                                    (cl-remove-if-not
-                                     #'moo-typep
-                                     (semantic-fetch-tags)))))))
-    (ivy-read "class: " cands
-              :action 'moo-implement-action)))
+  (if (moo-c++-class-name)
+      (moo-propose-virtual)
+    (setq ivy-completion-beg (point))
+    (setq ivy-completion-end (point))
+    (let ((cands
+           (mapcar (lambda (x)
+                     (cons
+                      (concat (semantic-tag-get-attribute x :parent)
+                              "::"
+                              (moo-tag->str x))
+                      x))
+                   (cl-remove-if-not #'moo-functionp
+                                     (moo-flatten-namepaces
+                                      (cl-remove-if-not
+                                       #'moo-typep
+                                       (semantic-fetch-tags)))))))
+      (ivy-read "class: " cands
+                :action 'moo-implement-action))))
+
 
 (defun moo-jump-directory (arg &optional initial-input)
   "Select a tag to jump to from tags defined in current directory.
