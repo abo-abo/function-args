@@ -999,7 +999,25 @@ TYPE and NAME are strings."
           (if (stringp return-type)
               return-type
             (moo-tag->str return-type)))
-         (scope (semantic-tag-get-attribute tag :parent)))
+         (scope (semantic-tag-get-attribute tag :parent))
+         (parent (cl-find-if 'moo-typep (moo-desperately-find-sname scope)))
+         (template (with-current-buffer (semantic-tag-buffer parent)
+                     (save-excursion
+                       (goto-char (semantic-tag-start parent))
+                       (when (looking-at "template <\\([^>]+\\)>")
+                         (match-string-no-properties 1)))))
+         (constp (semantic-tag-get-attribute tag :methodconst-flag)))
+    (when template
+      (setq return-type
+            (format "template <%s>\n%s" template return-type))
+      (setq scope
+            (format "%s<%s>"
+                    scope
+                    (mapconcat (lambda (s)
+                                 (when (string-match "\\`typename\\|class " s)
+                                   (substring s (match-end 0))))
+                               (split-string template ",")
+                               ","))))
     ;; constructor?
     (unless (equal return-type scope)
       (insert return-type
@@ -1017,6 +1035,8 @@ TYPE and NAME are strings."
                                    (concat " " (cdr x)))))
                        argument-conses ", ")
             ")")
+    (when constp
+      (insert " const"))
     (insert " {\n  \n}")
     (setq ivy-completion-end (point))
     (backward-char 2)))
@@ -1865,7 +1885,7 @@ Returns TAG if it's not a typedef."
               (backward-list))
             ;; TODO take care of nested classes
             (if (looking-back
-                 "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\).*\n")
+                 "\\(?:class\\|struct\\) \\([A-Za-z][A-Z_a-z0-9]*\\).*[\n \t]*")
                 (progn
                   (goto-char (match-beginning 0))
                   (setq name (match-string-no-properties 1))
