@@ -41,6 +41,7 @@
 (require 'cl-lib)
 (require 'cc-cmds)
 (require 'etags)
+(require 'ivy)
 (eval-when-compile
   (require 'cl))
 (require 'semantic/ia)
