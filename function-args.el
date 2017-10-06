@@ -47,6 +47,7 @@
 (require 'semantic/db-find)
 (require 'semantic-directory)
 (require 'json)
+(require 'ivy)
 (defvar ivy-last)
 (declare-function ivy-read "ext:ivy")
 (declare-function ivy-state-window "ext:ivy")
