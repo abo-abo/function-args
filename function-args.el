@@ -1064,6 +1064,23 @@ Currently, the class has to be in the current buffer."
       (ivy-read "class: " cands
                 :action 'moo-implement-action))))
 
+(defun moo-new-class ()
+  (interactive)
+  (let ((name (read-string "name: "))
+        (parent (ivy-read "parent: "
+                          (cl-delete-duplicates
+                           (cl-remove-if-not
+                            (lambda (x) (moo-typep (cdr x)))
+                            (moo-fetch-tags))
+                           :test (lambda (x y) (string= (car x) (car y))))))
+        (beg (point)))
+    (unless (string= parent "")
+      (setq parent (concat ": public " parent)))
+    (insert
+     (format "class %s%s\n{\n\n};" name parent))
+    (indent-region beg (point))
+    (forward-line -1)
+    (insert "  ")))
 
 (defun moo-jump-directory (arg &optional initial-input)
   "Select a tag to jump to from tags defined in current directory.
