@@ -271,13 +271,33 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
       (fa-abort)
     (save-excursion
       (fa-do-position)
-      (setq fa-lst (fa-calculate))
+      (setq fa-lst
+            (or
+             (and (bound-and-true-p lsp-mode)
+                  (ignore-errors (fa-calculate-lsp)))
+             (fa-calculate)))
       (setq fa-hint-pos (point))
       (setq fa-idx 0))
     (if (eq (length fa-lst) 0)
         (message "nothing found")
       (fa-update-arg)
       (fa-start-tracking))))
+
+(defun fa-calculate-lsp ()
+  (let ((symbol (thing-at-point 'symbol t))
+        (bounds (bounds-of-thing-at-point 'symbol))
+        (line (line-number-at-pos))
+        (column (current-column))
+        (doc-id (lsp--text-document-identifier)))
+    (when symbol
+      (let* ((info1 (lsp--send-request
+                     (lsp--make-request
+                      "textDocument/hover"
+                      (list :textDocument doc-id
+                            :position (lsp--position (1- line) (if (= column 0) 0 (1- column)))))))
+             (info2 (gethash "contents" info1))
+             (info3 (gethash "value" (car info2))))
+        (setq fa-lst (list info3))))))
 
 (defun fa-abort ()
   "Stop tracking the cursor and remove the overlay."
