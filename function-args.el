@@ -677,51 +677,57 @@ X is an element of `fa-lst'."
 WSPACE is the padding."
   (if (< wspace 0)
       (setq wspace 0))
-  (let* ((lst (nth fa-idx fa-lst))
-         (n-string
-          (if (> (length fa-lst) 1)
-              (format "[%d of %d] " (+ fa-idx 1) (length fa-lst))
-            ""))
-         (padding-length (- wspace (+ 1 (length n-string))))
-         (padder (when (> padding-length 0) (make-string padding-length ?\ )))
-         (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
-                                                         (length (cdr x))))
-                                          (cdr lst)))
-                       (length (caar lst))
-                       (length (cadar lst))
-                       7))
-         (glue (if (> (+ wspace str-width)
-                      (min fa-max-one-line-width (frame-width)))
-                   ;; each arg on its own line
-                   (concat fa-comma "\n" (make-string (1+ wspace) ?\ ))
-                 fa-comma))
-         (args (mapcar #'fa-fancy-argument
-                       (cdr lst)))
-         (args-current-cdr (nthcdr fa-arg args))
-         comment)
-    (when args-current-cdr
-      (setcar args-current-cdr
-              (fa-fancy-argument (nth fa-arg (cdr lst)) t)))
-    (concat
-     (if (or (null fa-do-comments)
-             (null (setq comment (fa-get-comment lst))))
-         ""
-       (concat
-        (mapconcat (lambda (x)
-                     (concat " " padder x))
-                   (split-string comment "\n")
-                   "\n")
-        "\n"))
-     padder
-     (propertize n-string 'face 'fa-face-hint-bold)
-     " "
-     fa-paren-open
-     (and args (mapconcat 'identity args glue))
-     fa-paren-close
-     ;; template
-     (and (caar lst) (propertize (caar lst) 'face 'fa-face-hint))
-     ;; name
-     (and (cadar lst) (propertize (cadar lst) 'face 'fa-face-type)))))
+  (if (and
+       (bound-and-true-p lsp-mode)
+       (stringp (nth fa-idx fa-lst)))
+      (propertize
+       (nth fa-idx fa-lst)
+       'face 'fa-face-hint)
+    (let* ((lst (nth fa-idx fa-lst))
+           (n-string
+            (if (> (length fa-lst) 1)
+                (format "[%d of %d] " (+ fa-idx 1) (length fa-lst))
+              ""))
+           (padding-length (- wspace (+ 1 (length n-string))))
+           (padder (when (> padding-length 0) (make-string padding-length ?\ )))
+           (str-width (+ (apply #'+ (mapcar (lambda (x) (+ (length (car x))
+                                                           (length (cdr x))))
+                                            (cdr lst)))
+                         (length (caar lst))
+                         (length (cadar lst))
+                         7))
+           (glue (if (> (+ wspace str-width)
+                        (min fa-max-one-line-width (frame-width)))
+                     ;; each arg on its own line
+                     (concat fa-comma "\n" (make-string (1+ wspace) ?\ ))
+                   fa-comma))
+           (args (mapcar #'fa-fancy-argument
+                         (cdr lst)))
+           (args-current-cdr (nthcdr fa-arg args))
+           comment)
+      (when args-current-cdr
+        (setcar args-current-cdr
+                (fa-fancy-argument (nth fa-arg (cdr lst)) t)))
+      (concat
+       (if (or (null fa-do-comments)
+               (null (setq comment (fa-get-comment lst))))
+           ""
+         (concat
+          (mapconcat (lambda (x)
+                       (concat " " padder x))
+                     (split-string comment "\n")
+                     "\n")
+          "\n"))
+       padder
+       (propertize n-string 'face 'fa-face-hint-bold)
+       " "
+       fa-paren-open
+       (and args (mapconcat 'identity args glue))
+       fa-paren-close
+       ;; template
+       (and (caar lst) (propertize (caar lst) 'face 'fa-face-hint))
+       ;; name
+       (and (cadar lst) (propertize (cadar lst) 'face 'fa-face-type))))))
 
 (defun fa-fancy-argument (cel &optional bold)
   "Return string representation for CEL.
