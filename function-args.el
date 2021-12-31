@@ -1153,6 +1153,12 @@ When ARG is non-nil, regenerate tags."
   (interactive)
   (setq fa-superclasses (make-hash-table :test 'equal)))
 
+(defun fa-out-forward ()
+  (let ((s (syntax-ppss)))
+    (when (nth 3 s)
+      (goto-char (nth 8 s)))
+    (up-list)))
+
 (defun fa-do-position ()
   "Position the cursor at the `(', which is logically closest."
   (cond
@@ -1165,7 +1171,7 @@ When ARG is non-nil, regenerate tags."
      (re-search-forward "(")
      (backward-char))
     (t
-     (up-list)
+     (fa-out-forward)
      (backward-list)))
   (unless (fa-looking-back "^[ \t]*")
     (while (fa-looking-back " ")
