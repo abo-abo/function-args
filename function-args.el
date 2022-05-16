@@ -41,6 +41,8 @@
 (require 'cl-lib)
 (require 'cc-cmds)
 (require 'etags)
+(when (version<= "27.1" emacs-version)
+  (require 'xref))
 (require 'ivy)
 (eval-when-compile
   (require 'cl))
@@ -317,7 +319,7 @@ Otherwise, call `c-indent-new-comment-line' that's usually bound to \"M-j\"."
   (interactive)
   (when (overlayp fa-overlay)
     (fa-abort)
-    (ring-insert find-tag-marker-ring (point-marker))
+    (moo-push-tag-marker)
     (let ((tag (nth 2 (car (nth fa-idx fa-lst)))))
       (let ((fname (or (car tag)
                        (save-excursion
@@ -1398,8 +1400,7 @@ When PREFIX is not nil, erase it before inserting."
         (progn
           (let ((file-name (semantic-tag-get-attribute tag :truefile))
                 (ov (semantic-tag-overlay tag)))
-            (ring-insert
-             find-tag-marker-ring (point-marker))
+            (moo-push-tag-marker)
             (when file-name
               (find-file file-name))
             (goto-char (if (overlayp ov)
@@ -2048,6 +2049,12 @@ The point should be on the top-level function name."
               "\n")
              (incf ord)))
       (aya-expand))))
+
+(defun moo-push-tag-marker ()
+  "Wrapper function for push the tag marker, dependant on emacs version"
+  (if (version< emacs-version "27.1")
+      (ring-insert find-tag-marker-ring (point-marker))
+    (xref-push-marker-stack)))
 
 (provide 'function-args)
 
